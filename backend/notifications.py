@@ -1,139 +1,136 @@
 """
-ThermoGuard AI - Email Alert Dispatcher
+ThermoGuard AI - Email Alert Dispatcher (via Resend HTTP API)
 Sends real-time email alerts when CRITICAL events are triggered.
 
-Uses Python's built-in smtplib — zero extra dependencies.
+Uses Python's built-in urllib — zero extra dependencies.
+Render blocks outbound SMTP (port 587), so we use Resend's HTTPS API instead.
 
-Setup (set these in Render environment variables):
-  ALERT_EMAIL_FROM      → sender address  (e.g. yourname@gmail.com)
-  ALERT_EMAIL_TO        → recipient address (can be same as FROM)
-  ALERT_EMAIL_PASSWORD  → Gmail App Password (NOT your normal password)
-                          Gmail → Manage Account → Security → App Passwords
-  SMTP_HOST             → (optional) defaults to smtp.gmail.com
-  SMTP_PORT             → (optional) defaults to 587
+Setup:
+  1. Sign up free at https://resend.com  (3,000 emails/month free)
+  2. Create an API key: Resend dashboard → API Keys → Create API Key
+  3. Set these environment variables in Render:
+       RESEND_API_KEY   → re_xxxxxxxxxxxxxxxxxxxx  (from Resend dashboard)
+       ALERT_EMAIL_TO   → the address you want alerts sent TO
 
-For Gmail you MUST use an App Password (2FA required on the Google account).
-For Outlook/Hotmail: SMTP_HOST=smtp-mail.outlook.com  SMTP_PORT=587
-For Yahoo:           SMTP_HOST=smtp.mail.yahoo.com    SMTP_PORT=587
-
-No config = email silently disabled (zero crash risk).
+  The FROM address defaults to "ThermoGuard AI <onboarding@resend.dev>"
+  which works immediately on the free plan with no domain setup needed.
+  To send FROM your own address, verify your domain at resend.com/domains
+  and set ALERT_EMAIL_FROM=alerts@yourdomain.com
 """
 
+import json
 import os
-import smtplib
 import threading
 from datetime import UTC, datetime
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
+from urllib.error import URLError
+from urllib.request import Request, urlopen
 
 # ── Config ────────────────────────────────────────────────────────────────────
-_FROM     = os.getenv("ALERT_EMAIL_FROM", "")
+_API_KEY  = os.getenv("RESEND_API_KEY", "")
 _TO       = os.getenv("ALERT_EMAIL_TO", "")
-_PASSWORD = os.getenv("ALERT_EMAIL_PASSWORD", "")
-_HOST     = os.getenv("SMTP_HOST", "smtp.gmail.com")
-_PORT     = int(os.getenv("SMTP_PORT", "587"))
+_FROM     = os.getenv("ALERT_EMAIL_FROM", "ThermoGuard AI <onboarding@resend.dev>")
 
-# Only fire email for these severities (WARNING can be noisy during simulation)
+_RESEND_URL = "https://api.resend.com/emails"
+
+# Only fire email for CRITICAL — WARNING is too noisy during simulation
 _NOTIFY_SEVERITIES = {"CRITICAL"}
 
 
 def _is_configured() -> bool:
-    return bool(_FROM and _TO and _PASSWORD)
+    return bool(_API_KEY and _TO)
 
 
-def _build_email(severity: str, message: str, temperature: float | None, humidity: float | None, anomaly_score: float | None) -> MIMEMultipart:
-    """Builds a plain-text + HTML multipart email."""
+def _build_html(severity: str, message: str, temperature: float | None, humidity: float | None, anomaly_score: float | None) -> tuple[str, str]:
+    """Returns (subject, html_body)."""
     ts   = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
     icon = "🔴" if severity == "CRITICAL" else "🟡"
     subject = f"{icon} ThermoGuard AI — {severity} Alert"
 
-    # ── Plain text fallback ──
-    plain_lines = [
-        f"ThermoGuard AI — {severity} ALERT",
-        f"Time: {ts}",
-        "",
-        message,
-    ]
+    rows = ""
     if temperature is not None:
-        plain_lines.append(f"Temperature : {temperature:.1f} °C")
+        rows += f"<tr><td style='padding:6px 12px;color:#94A3B8;'>🌡️ Temperature</td><td style='padding:6px 12px;color:#F8FAFC;'><b>{temperature:.1f} °C</b></td></tr>"
     if humidity is not None:
-        plain_lines.append(f"Humidity    : {humidity:.1f} %")
+        rows += f"<tr><td style='padding:6px 12px;color:#94A3B8;'>💧 Humidity</td><td style='padding:6px 12px;color:#F8FAFC;'><b>{humidity:.1f} %</b></td></tr>"
     if anomaly_score is not None:
-        plain_lines.append(f"AI Score    : {anomaly_score:.4f}")
-    plain_lines += ["", "Check your ThermoGuard dashboard immediately."]
+        rows += f"<tr><td style='padding:6px 12px;color:#94A3B8;'>🤖 AI Score</td><td style='padding:6px 12px;color:#F8FAFC;'><code>{anomaly_score:.4f}</code></td></tr>"
 
-    # ── HTML version ──
-    temp_str  = f"<tr><td>🌡️ Temperature</td><td><b>{temperature:.1f} °C</b></td></tr>" if temperature is not None else ""
-    hum_str   = f"<tr><td>💧 Humidity</td><td><b>{humidity:.1f} %</b></td></tr>" if humidity is not None else ""
-    score_str = f"<tr><td>🤖 AI Score</td><td><code>{anomaly_score:.4f}</code></td></tr>" if anomaly_score is not None else ""
+    html = f"""<!DOCTYPE html>
+<html><body style="margin:0;padding:24px;background:#0F172A;font-family:Arial,sans-serif;">
+  <div style="max-width:520px;margin:auto;background:#1E293B;border-radius:12px;padding:28px;border-left:5px solid #F43F5E;">
+    <h2 style="color:#F43F5E;margin:0 0 8px;">{icon} ThermoGuard AI</h2>
+    <h3 style="color:#F8FAFC;margin:0 0 16px;">{severity} ALERT</h3>
+    <p style="color:#94A3B8;font-size:13px;margin:0 0 16px;">📅 {ts}</p>
+    <p style="color:#F8FAFC;margin:0 0 20px;">{message}</p>
+    <table style="width:100%;border-collapse:collapse;background:#0F172A;border-radius:8px;overflow:hidden;">
+      {rows}
+    </table>
+    <hr style="border:none;border-top:1px solid #334155;margin:24px 0;">
+    <p style="color:#64748B;font-size:12px;margin:0;">
+      ⚡ Generated by ThermoGuard AI Industrial Monitor.<br>
+      Log in to your dashboard to acknowledge this alert.
+    </p>
+  </div>
+</body></html>"""
 
-    html = f"""
-    <html><body style="font-family:Arial,sans-serif;background:#0F172A;color:#F8FAFC;padding:24px;">
-      <div style="max-width:520px;margin:auto;background:#1E293B;border-radius:12px;padding:28px;border-left:5px solid #F43F5E;">
-        <h2 style="color:#F43F5E;margin-top:0;">{icon} ThermoGuard AI — {severity} ALERT</h2>
-        <p style="color:#94A3B8;font-size:13px;">📅 {ts}</p>
-        <p style="color:#F8FAFC;">{message}</p>
-        <table style="width:100%;border-collapse:collapse;margin-top:16px;">
-          {temp_str}{hum_str}{score_str}
-        </table>
-        <hr style="border-color:#334155;margin:20px 0;">
-        <p style="color:#64748B;font-size:12px;">
-          ⚡ This alert was generated automatically by ThermoGuard AI.<br>
-          Log in to your dashboard to acknowledge this alert.
-        </p>
-      </div>
-    </body></html>
+    return subject, html
+
+
+def _send_via_resend(subject: str, html: str) -> tuple[bool, str]:
     """
+    POSTs to Resend API over HTTPS (port 443 — always open on Render).
+    Returns (success, error_detail).
+    """
+    payload = json.dumps({
+        "from": _FROM,
+        "to": [_TO],
+        "subject": subject,
+        "html": html,
+    }).encode("utf-8")
 
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = subject
-    msg["From"]    = f"ThermoGuard AI <{_FROM}>"
-    msg["To"]      = _TO
-    msg.attach(MIMEText("\n".join(plain_lines), "plain"))
-    msg.attach(MIMEText(html, "html"))
-    return msg
-
-
-def _send_email(msg: MIMEMultipart) -> tuple[bool, str]:
-    """Sends via SMTP TLS. Returns (success, error_detail)."""
+    req = Request(
+        _RESEND_URL,
+        data=payload,
+        headers={
+            "Authorization": f"Bearer {_API_KEY}",
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
     try:
-        with smtplib.SMTP(_HOST, _PORT, timeout=10) as server:
-            server.ehlo()
-            server.starttls()
-            server.login(_FROM, _PASSWORD)
-            server.sendmail(_FROM, _TO, msg.as_string())
-        return True, ""
-    except smtplib.SMTPAuthenticationError as e:
-        return False, f"Auth failed — wrong password or App Password not used: {e}"
-    except smtplib.SMTPException as e:
-        return False, f"SMTP error: {e}"
-    except OSError as e:
-        return False, f"Network error ({_HOST}:{_PORT}): {e}"
+        with urlopen(req, timeout=10) as resp:
+            if resp.status in (200, 201):
+                return True, ""
+            body = resp.read().decode("utf-8", errors="replace")
+            return False, f"Resend API returned {resp.status}: {body}"
+    except URLError as e:
+        return False, f"Network error reaching Resend API: {e}"
+    except Exception as e:
+        return False, f"Unexpected error: {e}"
 
 
 def send_test_email() -> dict:
     """
-    Synchronously sends a test alert email and returns a result dict.
+    Synchronously sends a test email via Resend and returns a result dict.
     Called by GET /api/notifications/test for quick diagnosis.
     """
     if not _is_configured():
-        missing = [k for k, v in {
-            "ALERT_EMAIL_FROM": _FROM,
-            "ALERT_EMAIL_TO": _TO,
-            "ALERT_EMAIL_PASSWORD": _PASSWORD,
-        }.items() if not v]
+        missing = []
+        if not _API_KEY:
+            missing.append("RESEND_API_KEY")
+        if not _TO:
+            missing.append("ALERT_EMAIL_TO")
         return {"ok": False, "error": f"Missing environment variables: {', '.join(missing)}"}
 
-    msg = _build_email(
+    subject, html = _build_html(
         severity="CRITICAL",
-        message="✅ This is a ThermoGuard AI test email. If you received this, alerts are working!",
+        message="✅ This is a ThermoGuard AI test email. If you received this, alerts are working correctly!",
         temperature=55.3,
         humidity=87.1,
         anomaly_score=-0.041,
     )
-    ok, err = _send_email(msg)
+    ok, err = _send_via_resend(subject, html)
     if ok:
-        return {"ok": True, "message": f"Test email sent to {_TO}"}
+        return {"ok": True, "message": f"Test email sent to {_TO} via Resend ✅"}
     return {"ok": False, "error": err}
 
 
@@ -145,26 +142,19 @@ def dispatch_alert(
     anomaly_score: float | None = None,
 ) -> None:
     """
-    Public interface. Called by services.py after an alert is inserted.
-    - Only sends for CRITICAL severity (WARNING skipped to avoid noise).
-    - Runs in a background daemon thread — never blocks the API response.
-    - Silently swallows all errors — notifications are best-effort.
+    Public interface called by services.py after an alert is inserted.
+    Runs in a background thread — never blocks the API response.
     """
     if severity.upper() not in _NOTIFY_SEVERITIES:
         return
     if not _is_configured():
         return
 
-    msg = _build_email(severity, message, temperature, humidity, anomaly_score)
+    subject, html = _build_html(severity, message, temperature, humidity, anomaly_score)
 
     def _fire():
-        try:
-            ok, err = _send_email(msg)
-            if not ok:
-                # Visible in Render logs under "Logs" tab
-                print(f"[ThermoGuard] Email alert FAILED: {err}", flush=True)
-        except Exception as exc:
-            print(f"[ThermoGuard] Email alert exception: {exc}", flush=True)
+        ok, err = _send_via_resend(subject, html)
+        if not ok:
+            print(f"[ThermoGuard] Email alert FAILED: {err}", flush=True)
 
-    t = threading.Thread(target=_fire, daemon=True, name="email-notify")
-    t.start()
+    threading.Thread(target=_fire, daemon=True, name="email-notify").start()
