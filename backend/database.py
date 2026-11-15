@@ -5,7 +5,7 @@ Provides thread-safe SQLite operations, schema auto-initialization, and indexing
 
 import os
 import sqlite3
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 # Retain existing data if present, otherwise default to thermoguard.db
@@ -103,24 +103,6 @@ def seed_initial_readings_if_empty(conn: sqlite3.Connection):
         pass
 
 
-def _setup_wal(path: str) -> None:
-    """
-    Sets WAL journal mode using an isolated autocommit connection.
-    WAL mode must be set outside any transaction to avoid 'database is locked' on boot.
-    Safe to call multiple times — SQLite is idempotent for PRAGMA journal_mode.
-    """
-    try:
-        # isolation_level=None → autocommit; no implicit BEGIN transaction
-        raw = sqlite3.connect(path, timeout=30.0, isolation_level=None)
-        raw.execute("PRAGMA busy_timeout = 30000;")
-        raw.execute("PRAGMA journal_mode = WAL;")
-        raw.close()
-    except Exception:
-        # If WAL setup fails (e.g. read-only FS or locked), fall back to default journal mode.
-        # The app still works; WAL is a performance optimisation only.
-        pass
-
-
 def get_db_connection(db_path: str | None = None) -> sqlite3.Connection:
     """
     Creates a thread-safe connection to SQLite with dictionary cursor, 30s busy timeout, and WAL mode.
@@ -128,16 +110,19 @@ def get_db_connection(db_path: str | None = None) -> sqlite3.Connection:
     """
     path = db_path or os.getenv("THERMOGUARD_DB", os.getenv("CABINETSENSE_DB", DEFAULT_DB_PATH))
     os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
-
-    # Apply WAL via a dedicated autocommit connection first (avoids lock on shared mount)
-    _setup_wal(path)
-
     conn = sqlite3.connect(path, timeout=30.0, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     try:
         conn.execute("PRAGMA busy_timeout = 30000;")
+    except sqlite3.OperationalError:
+        pass
+    try:
+        conn.execute("PRAGMA journal_mode = WAL;")
+    except sqlite3.OperationalError:
+        pass
+    try:
         conn.execute("PRAGMA foreign_keys = ON;")
-    except Exception:
+    except sqlite3.OperationalError:
         pass
 
     ensure_schema(conn)
@@ -448,45 +433,71 @@ def get_system_events(limit: int = 50, db_path: str | None = None) -> list[dict[
     return [dict(r) for r in rows]
 
 
-def get_analytics_summary(db_path: str | None = None) -> dict[str, Any]:
+def get_analytics_summary(hours: float | None = None, db_path: str | None = None) -> dict[str, Any]:
     """
     Calculates summary telemetry statistics, anomaly counts, and alert distribution.
+    When hours is provided (e.g. 24), aggregates are scoped to the rolling time window.
     Never fabricates metrics: returns zeros if no data exists.
     """
     conn = get_db_connection(db_path)
     cur = conn.cursor()
 
+    time_filter_readings = ""
+    time_filter_alerts = ""
+    params_readings: list[Any] = []
+    params_alerts: list[Any] = []
+
+    if hours is not None and hours > 0:
+        cutoff = (datetime.now(UTC) - timedelta(hours=hours)).isoformat()
+        time_filter_readings = " WHERE timestamp >= ?"
+        time_filter_alerts = " WHERE timestamp >= ?"
+        params_readings = [cutoff]
+        params_alerts = [cutoff]
+
     # Total counts
-    cur.execute("SELECT COUNT(*), COUNT(CASE WHEN is_anomaly = 1 THEN 1 END) FROM readings")
+    cur.execute(
+        f"SELECT COUNT(*), COUNT(CASE WHEN is_anomaly = 1 THEN 1 END) FROM readings{time_filter_readings}",
+        params_readings,
+    )
     total_readings, total_anomalies = cur.fetchone()
 
     # Aggregates
-    cur.execute("""
+    cur.execute(
+        f"""
         SELECT
             MIN(temperature), MAX(temperature), AVG(temperature),
             MIN(humidity), MAX(humidity), AVG(humidity)
-        FROM readings
-    """)
+        FROM readings{time_filter_readings}
+    """,
+        params_readings,
+    )
     t_min, t_max, t_avg, h_min, h_max, h_avg = cur.fetchone()
 
     # Source breakdown
-    cur.execute("SELECT source, COUNT(*) FROM readings GROUP BY source")
+    cur.execute(
+        f"SELECT source, COUNT(*) FROM readings{time_filter_readings} GROUP BY source",
+        params_readings,
+    )
     sources = dict(cur.fetchall())
 
     # Alerts breakdown
-    cur.execute("""
+    cur.execute(
+        f"""
         SELECT
             COUNT(*),
             COUNT(CASE WHEN severity = 'CRITICAL' THEN 1 END),
             COUNT(CASE WHEN severity = 'WARNING' THEN 1 END),
             COUNT(CASE WHEN status = 'UNRESOLVED' THEN 1 END)
-        FROM alerts
-    """)
+        FROM alerts{time_filter_alerts}
+    """,
+        params_alerts,
+    )
     total_alerts, critical_alerts, warning_alerts, unresolved_alerts = cur.fetchone()
 
     conn.close()
 
     return {
+        "window_hours": hours,
         "readings_count": total_readings or 0,
         "anomalies_count": total_anomalies or 0,
         "anomaly_rate_pct": round((total_anomalies / total_readings * 100), 2) if total_readings else 0.0,
@@ -508,3 +519,8 @@ def get_analytics_summary(db_path: str | None = None) -> dict[str, Any]:
             "unresolved": unresolved_alerts or 0,
         },
     }
+
+
+def get_24h_summary(db_path: str | None = None) -> dict[str, Any]:
+    """Retrieves analytics summary specifically over the last 24 hours."""
+    return get_analytics_summary(hours=24.0, db_path=db_path)

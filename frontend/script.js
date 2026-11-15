@@ -407,6 +407,126 @@ class ThermoGuardApp {
       simBtn.className = simRunning ? "btn btn-outline" : "btn btn-primary";
       this.refreshIcons();
     }
+
+    // 24-Hour Statistics Panel update
+    if (data && data.summary_24h) {
+      this.render24hStats(data.summary_24h);
+    }
+  }
+
+  render24hStats(stats) {
+    if (!stats) return;
+
+    // Ingested readings count badge
+    const badgePoints = document.getElementById("badge-24h-points");
+    if (badgePoints) {
+      badgePoints.textContent = `${stats.readings_count || 0} Readings (24h)`;
+    }
+
+    // Temperature (min, max, avg)
+    const t = stats.temperature || {};
+    const tMinEl = document.getElementById("stat-temp-min");
+    const tMaxEl = document.getElementById("stat-temp-max");
+    const tAvgEl = document.getElementById("stat-temp-avg");
+    const tEvalEl = document.getElementById("stat-temp-eval");
+    const tFillEl = document.getElementById("stat-temp-fill");
+
+    if (tAvgEl) tAvgEl.textContent = t.avg != null ? t.avg.toFixed(1) : "--.-";
+    if (tMinEl) tMinEl.textContent = t.min != null ? `${t.min.toFixed(1)}°C` : "--.-°C";
+    if (tMaxEl) tMaxEl.textContent = t.max != null ? `${t.max.toFixed(1)}°C` : "--.-°C";
+
+    if (tEvalEl) {
+      const maxT = t.max || 0;
+      if (maxT >= 52.0) {
+        tEvalEl.textContent = "Critical Limit";
+        tEvalEl.className = "badge badge-critical";
+      } else if (maxT >= 38.0) {
+        tEvalEl.textContent = "Elevated";
+        tEvalEl.className = "badge badge-warning";
+      } else {
+        tEvalEl.textContent = "Nominal";
+        tEvalEl.className = "badge badge-normal";
+      }
+    }
+
+    if (tFillEl && t.avg != null) {
+      const pct = Math.max(5, Math.min(100, ((t.avg - 10) / 60) * 100));
+      tFillEl.style.width = `${pct}%`;
+    }
+
+    // Humidity (min, max, avg)
+    const h = stats.humidity || {};
+    const hMinEl = document.getElementById("stat-hum-min");
+    const hMaxEl = document.getElementById("stat-hum-max");
+    const hAvgEl = document.getElementById("stat-hum-avg");
+    const hEvalEl = document.getElementById("stat-hum-eval");
+    const hFillEl = document.getElementById("stat-hum-fill");
+
+    if (hAvgEl) hAvgEl.textContent = h.avg != null ? h.avg.toFixed(1) : "--.-";
+    if (hMinEl) hMinEl.textContent = h.min != null ? `${h.min.toFixed(1)}%` : "--.-%";
+    if (hMaxEl) hMaxEl.textContent = h.max != null ? `${h.max.toFixed(1)}%` : "--.-%";
+
+    if (hEvalEl) {
+      const maxH = h.max || 0;
+      if (maxH >= 85.0) {
+        hEvalEl.textContent = "Critical Moisture";
+        hEvalEl.className = "badge badge-critical";
+      } else if (maxH >= 70.0) {
+        hEvalEl.textContent = "High Humidity";
+        hEvalEl.className = "badge badge-warning";
+      } else {
+        hEvalEl.textContent = "Nominal";
+        hEvalEl.className = "badge badge-normal";
+      }
+    }
+
+    if (hFillEl && h.avg != null) {
+      const pct = Math.max(5, Math.min(100, h.avg));
+      hFillEl.style.width = `${pct}%`;
+    }
+
+    // AI Anomaly Rate
+    const anomCount = stats.anomalies_count || 0;
+    const readCount = stats.readings_count || 0;
+    const anomRate = stats.anomaly_rate_pct != null ? stats.anomaly_rate_pct.toFixed(1) : "0.0";
+    const nominalCount = Math.max(0, readCount - anomCount);
+
+    const anomRateEl = document.getElementById("stat-anomaly-rate");
+    const anomCountEl = document.getElementById("stat-anomaly-count");
+    const nomCountEl = document.getElementById("stat-nominal-count");
+    const anomEvalEl = document.getElementById("stat-anomaly-eval");
+
+    if (anomRateEl) {
+      anomRateEl.textContent = anomRate;
+      anomRateEl.className = anomCount > 0 ? "stat-avg text-rose" : "stat-avg text-emerald";
+    }
+    if (anomCountEl) anomCountEl.textContent = anomCount;
+    if (nomCountEl) nomCountEl.textContent = nominalCount;
+    if (anomEvalEl) {
+      if (anomCount > 5) {
+        anomEvalEl.textContent = "High Ingress";
+        anomEvalEl.className = "badge badge-critical";
+      } else if (anomCount > 0) {
+        anomEvalEl.textContent = "Anomalies Seen";
+        anomEvalEl.className = "badge badge-warning";
+      } else {
+        anomEvalEl.textContent = "Clean";
+        anomEvalEl.className = "badge badge-normal";
+      }
+    }
+
+    // Alerts Breakdown
+    const alerts = stats.alerts || {};
+    const alertTotalEl = document.getElementById("stat-alerts-total");
+    const alertCritEl = document.getElementById("stat-alert-crit");
+    const alertWarnEl = document.getElementById("stat-alert-warn");
+    const alertUnresEl = document.getElementById("stat-alert-unres");
+
+    if (alertTotalEl) alertTotalEl.textContent = `${alerts.total || 0} Alarms (24h)`;
+    if (alertCritEl) alertCritEl.textContent = alerts.critical || 0;
+    if (alertWarnEl) alertWarnEl.textContent = alerts.warning || 0;
+    if (alertUnresEl) alertUnresEl.textContent = alerts.unresolved || 0;
+  }
   }
 
   renderSystemOffline() {

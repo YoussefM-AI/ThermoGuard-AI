@@ -17,6 +17,7 @@ from backend.database import (
     acknowledge_alert,
     get_alerts,
     get_analytics_summary,
+    get_24h_summary,
     get_db_connection,
     get_latest_reading,
     get_readings,
@@ -84,6 +85,7 @@ def system_status():
     ai_status = get_model_info()
     latest = get_latest_reading()
     summary = get_analytics_summary()
+    summary_24h = get_24h_summary()
 
     # Determine primary monitoring mode
     if hw_status["connected"]:
@@ -102,6 +104,7 @@ def system_status():
             "ai": ai_status,
             "latest_reading": latest,
             "summary": summary,
+            "summary_24h": summary_24h,
         }
     ), 200
 
@@ -242,8 +245,10 @@ def get_simulation_status():
 @api_bp.route("/analytics", methods=["GET"])
 def get_analytics():
     """Returns summary statistics and aggregation distributions."""
-    summary = get_analytics_summary()
-    return jsonify({"status": "success", "analytics": summary}), 200
+    hours = request.args.get("hours", type=float)
+    summary = get_analytics_summary(hours=hours)
+    summary_24h = get_24h_summary()
+    return jsonify({"status": "success", "analytics": summary, "last_24h": summary_24h}), 200
 
 
 @api_bp.route("/events", methods=["GET"])

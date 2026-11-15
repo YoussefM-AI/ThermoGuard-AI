@@ -16,7 +16,7 @@
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
   
-  <link rel="stylesheet" href="style.css?v=2">
+  <link rel="stylesheet" href="style.css?v=3">
 </head>
 <body>
   <div class="app-container">
@@ -217,6 +217,113 @@
             <div class="panel-body">
               <div class="chart-container-single">
                 <canvas id="mainHistoryChart"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <!-- 24-HOUR OPERATIONAL METRICS & TELEMETRY ANALYSIS -->
+          <div class="dashboard-panel" id="panel-24h-stats">
+            <div class="panel-header">
+              <div class="panel-title-group">
+                <i data-lucide="bar-chart-3"></i>
+                <div>
+                  <h3>24-Hour Operational Metrics & Anomaly Distribution</h3>
+                  <p>Rolling 24h temperature & humidity limits, telemetry volume, and AI anomaly tracking</p>
+                </div>
+              </div>
+              <div class="panel-actions">
+                <span class="badge badge-normal" id="badge-24h-points">0 Readings (24h)</span>
+              </div>
+            </div>
+            <div class="panel-body">
+              <div class="stats-24h-grid">
+                <!-- Thermal Range Card -->
+                <div class="stats-card">
+                  <div class="stats-card-header">
+                    <span class="stats-label"><i data-lucide="thermometer"></i> 24h Temperature Range</span>
+                    <span class="badge badge-normal" id="stat-temp-eval">Nominal</span>
+                  </div>
+                  <div class="stats-card-body">
+                    <div class="stat-main">
+                      <span class="stat-avg" id="stat-temp-avg">--.-</span>
+                      <span class="stat-unit">°C avg</span>
+                    </div>
+                    <div class="stat-range-bar-wrapper">
+                      <div class="stat-range-labels">
+                        <span>Min: <b id="stat-temp-min">--.-°C</b></span>
+                        <span>Max: <b id="stat-temp-max">--.-°C</b></span>
+                      </div>
+                      <div class="stat-progress-bar">
+                        <div class="stat-progress-fill temp" id="stat-temp-fill" style="width: 50%;"></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Humidity Range Card -->
+                <div class="stats-card">
+                  <div class="stats-card-header">
+                    <span class="stats-label"><i data-lucide="droplets"></i> 24h Humidity Range</span>
+                    <span class="badge badge-normal" id="stat-hum-eval">Nominal</span>
+                  </div>
+                  <div class="stats-card-body">
+                    <div class="stat-main">
+                      <span class="stat-avg" id="stat-hum-avg">--.-</span>
+                      <span class="stat-unit">% avg</span>
+                    </div>
+                    <div class="stat-range-bar-wrapper">
+                      <div class="stat-range-labels">
+                        <span>Min: <b id="stat-hum-min">--.-%</b></span>
+                        <span>Max: <b id="stat-hum-max">--.-%</b></span>
+                      </div>
+                      <div class="stat-progress-bar">
+                        <div class="stat-progress-fill hum" id="stat-hum-fill" style="width: 50%;"></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- AI Anomaly Rate Card -->
+                <div class="stats-card">
+                  <div class="stats-card-header">
+                    <span class="stats-label"><i data-lucide="brain"></i> AI Anomaly Rate</span>
+                    <span class="badge badge-normal" id="stat-anomaly-eval">Clean</span>
+                  </div>
+                  <div class="stats-card-body">
+                    <div class="stat-main">
+                      <span class="stat-avg text-emerald" id="stat-anomaly-rate">0.0</span>
+                      <span class="stat-unit">%</span>
+                    </div>
+                    <div class="stat-meta-row">
+                      <span>Anomalies: <b id="stat-anomaly-count" class="text-rose">0</b></span>
+                      <span>Nominal: <b id="stat-nominal-count" class="text-emerald">0</b></span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Alert Activity Card -->
+                <div class="stats-card">
+                  <div class="stats-card-header">
+                    <span class="stats-label"><i data-lucide="bell"></i> 24h Alarm Activity</span>
+                    <span class="badge badge-normal" id="stat-alerts-total">0 Alarms</span>
+                  </div>
+                  <div class="stats-card-body">
+                    <div class="stat-meta-row alert-breakdown">
+                      <div class="alert-pill crit">
+                        <span class="dot"></span>
+                        <span>Critical: <b id="stat-alert-crit">0</b></span>
+                      </div>
+                      <div class="alert-pill warn">
+                        <span class="dot"></span>
+                        <span>Warning: <b id="stat-alert-warn">0</b></span>
+                      </div>
+                      <div class="alert-pill unres">
+                        <span class="dot"></span>
+                        <span>Unresolved: <b id="stat-alert-unres">0</b></span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -604,6 +711,6 @@
   </div>
 
   <div class="toast-container" id="toast-container"></div>
-  <script src="script.js?v=2"></script>
+  <script src="script.js?v=3"></script>
 </body>
 </html>

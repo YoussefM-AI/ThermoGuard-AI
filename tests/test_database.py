@@ -15,6 +15,7 @@ from backend.database import (
     acknowledge_alert,
     get_alerts,
     get_analytics_summary,
+    get_24h_summary,
     get_latest_reading,
     get_readings,
     init_db,
@@ -103,6 +104,12 @@ class TestThermoGuardDatabase(unittest.TestCase):
         self.assertAlmostEqual(summary["temperature"]["avg"], 30.0)
         self.assertEqual(summary["sources"]["hardware"], 1)
         self.assertEqual(summary["sources"]["simulation"], 2)
+
+        # Verify 24-hour window summary
+        summary_24h = get_24h_summary(db_path=self.temp_db_path)
+        self.assertEqual(summary_24h["readings_count"], 3)
+        self.assertEqual(summary_24h["anomalies_count"], 1)
+        self.assertEqual(summary_24h["window_hours"], 24.0)
 
 
 if __name__ == "__main__":
