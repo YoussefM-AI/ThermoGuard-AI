@@ -19,4 +19,4 @@ RUN mkdir -p /app/data
 
 EXPOSE 5000
 
-CMD ["gunicorn", "backend.app:app", "--bind", "0.0.0.0:5000", "--workers", "2", "--threads", "4"]
+CMD ["gunicorn", "backend.app:app", "--bind", "0.0.0.0:5000", "--workers", "1", "--threads", "4"]

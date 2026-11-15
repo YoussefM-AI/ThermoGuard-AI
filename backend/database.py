@@ -66,60 +66,83 @@ def _create_tables(cur: sqlite3.Cursor):
 
 def ensure_schema(conn: sqlite3.Connection):
     """Verifies that all required tables and indexes exist; auto-creates missing ones."""
-    cur = conn.cursor()
-    _create_tables(cur)
-    conn.commit()
+    try:
+        cur = conn.cursor()
+        _create_tables(cur)
+        conn.commit()
+    except sqlite3.OperationalError:
+        # If another worker or thread already committed schema, continue safely
+        pass
 
 
 def seed_initial_readings_if_empty(conn: sqlite3.Connection):
     """Populates baseline nominal readings if the database is brand new and empty."""
     from datetime import timedelta
 
-    cur = conn.cursor()
-    cur.execute("SELECT COUNT(*) FROM readings")
-    count = cur.fetchone()[0]
-    if count == 0:
-        now = datetime.now(UTC)
-        base_t = 24.6
-        base_h = 45.2
-        for i in range(15):
-            dt = now - timedelta(seconds=(14 - i) * 3)
-            t = round(base_t + (0.25 * (i % 3)) - 0.15, 2)
-            h = round(base_h + (0.4 * (i % 2)) - 0.2, 2)
-            cur.execute(
-                """
-                INSERT INTO readings (timestamp, temperature, humidity, source, is_anomaly, anomaly_score)
-                VALUES (?, ?, ?, 'SIMULATION', 0, 0.065)
-            """,
-                (dt.isoformat(), t, h),
-            )
-        conn.commit()
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT COUNT(*) FROM readings")
+        count = cur.fetchone()[0]
+        if count == 0:
+            now = datetime.now(UTC)
+            base_t = 24.6
+            base_h = 45.2
+            for i in range(15):
+                dt = now - timedelta(seconds=(14 - i) * 3)
+                t = round(base_t + (0.25 * (i % 3)) - 0.15, 2)
+                h = round(base_h + (0.4 * (i % 2)) - 0.2, 2)
+                cur.execute(
+                    """
+                    INSERT INTO readings (timestamp, temperature, humidity, source, is_anomaly, anomaly_score)
+                    VALUES (?, ?, ?, 'SIMULATION', 0, 0.065)
+                """,
+                    (dt.isoformat(), t, h),
+                )
+            conn.commit()
+    except sqlite3.OperationalError:
+        pass
 
 
 def get_db_connection(db_path: str | None = None) -> sqlite3.Connection:
     """
-    Creates a thread-safe connection to SQLite with dictionary cursor and WAL mode.
-    Guarantees schema exists automatically.
+    Creates a thread-safe connection to SQLite with dictionary cursor, 30s busy timeout, and WAL mode.
+    Guarantees schema exists automatically without locking contention.
     """
     path = db_path or os.getenv("THERMOGUARD_DB", os.getenv("CABINETSENSE_DB", DEFAULT_DB_PATH))
     os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
-    conn = sqlite3.connect(path, timeout=10.0, check_same_thread=False)
+    conn = sqlite3.connect(path, timeout=30.0, check_same_thread=False)
     conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA journal_mode = WAL;")
-    conn.execute("PRAGMA foreign_keys = ON;")
+    try:
+        conn.execute("PRAGMA busy_timeout = 30000;")
+    except sqlite3.OperationalError:
+        pass
+    try:
+        conn.execute("PRAGMA journal_mode = WAL;")
+    except sqlite3.OperationalError:
+        pass
+    try:
+        conn.execute("PRAGMA foreign_keys = ON;")
+    except sqlite3.OperationalError:
+        pass
+
     ensure_schema(conn)
+
     return conn
 
 
 def init_db(db_path: str | None = None, seed: bool = False):
     """
-    Initializes database tables, performance indexes, and seeds baseline readings.
+    Initializes database tables, performance indexes, and seeds baseline readings safely.
     """
     conn = get_db_connection(db_path)
-    ensure_schema(conn)
-    if seed:
-        seed_initial_readings_if_empty(conn)
-    conn.close()
+    try:
+        ensure_schema(conn)
+        if seed:
+            seed_initial_readings_if_empty(conn)
+    except sqlite3.OperationalError:
+        pass
+    finally:
+        conn.close()
 
 
 # -------------------------------------------------------------

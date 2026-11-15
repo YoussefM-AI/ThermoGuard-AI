@@ -80,9 +80,12 @@ def create_app(test_config=None) -> Flask:
         return jsonify({"error": f"File '{path}' not found"}), 404
 
     # Log backend initialization event
-    insert_system_event(
-        event_type="SYSTEM_BOOT", description="ThermoGuard AI Backend service started", source="SYSTEM", db_path=db_path
-    )
+    try:
+        insert_system_event(
+            event_type="SYSTEM_BOOT", description="ThermoGuard AI Backend service started", source="SYSTEM", db_path=db_path
+        )
+    except Exception:
+        pass
 
     return app
 
