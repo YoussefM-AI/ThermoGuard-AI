@@ -1,21 +1,25 @@
 """
-CabinetSense AI - Simulation Test Suite
+ThermoGuard AI - Simulation Test Suite
 Tests all 5 simulation scenarios and simulator functionality.
 """
 
+import os
+import sys
 import unittest
-import time
-from datetime import datetime
+
+# Ensure project root is available in sys.path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
 from simulation.scenarios import (
-    get_scenario,
-    NormalScenario,
-    GradualTempIncreaseScenario,
+    SCENARIOS,
     AbnormalHumidityScenario,
     CombinedAnomalyScenario,
+    GradualTempIncreaseScenario,
     NetworkInterruptionScenario,
-    SCENARIOS
+    NormalScenario,
 )
 from simulation.simulator import CabinetSimulator
+
 
 class TestSimulationScenarios(unittest.TestCase):
     def test_scenario_catalog(self):
@@ -77,7 +81,7 @@ class TestSimulationScenarios(unittest.TestCase):
                 normal_count += 1
                 self.assertIsNotNone(r["temperature"])
                 self.assertIsNotNone(r["humidity"])
-        self.assertEqual(dropped_count, 5) # Steps 5 to 9
+        self.assertEqual(dropped_count, 5)  # Steps 5 to 9
         self.assertEqual(normal_count, 10)
 
     def test_simulator_controller(self):
@@ -85,14 +89,15 @@ class TestSimulationScenarios(unittest.TestCase):
         status = sim.get_status()
         self.assertFalse(status["running"])
         self.assertEqual(status["scenario_key"], "normal")
-        
+
         # Test scenario switching
         success = sim.set_scenario("gradual_temp")
         self.assertTrue(success)
         self.assertEqual(sim.scenario_key, "gradual_temp")
-        
+
         # Test invalid scenario
         self.assertFalse(sim.set_scenario("non_existent"))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,0 +1,18 @@
+{
+  "include": [
+    "ai",
+    "backend",
+    "simulation",
+    "tests"
+  ],
+  "extraPaths": [
+    "."
+  ],
+  "typeCheckingMode": "off",
+  "reportMissingImports": "none",
+  "reportImplicitNamespacePackage": "none",
+  "reportGeneralTypeIssues": "none",
+  "reportOptionalMemberAccess": "none",
+  "reportOptionalSubscript": "none",
+  "reportPrivateImportUsage": "none"
+}

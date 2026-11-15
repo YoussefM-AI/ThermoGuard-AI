@@ -1,34 +1,21 @@
 """
-CabinetSense AI - Database Management Layer
+ThermoGuard AI - Database Management Layer
 Provides thread-safe SQLite operations, schema auto-initialization, and indexing.
 """
 
 import os
 import sqlite3
-from datetime import datetime, timezone
-from typing import List, Dict, Any, Optional
+from datetime import UTC, datetime
+from typing import Any
 
-DEFAULT_DB_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "cabinetsense.db")
+# Retain existing data if present, otherwise default to thermoguard.db
+_LEGACY_DB = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "cabinetsense.db")
+_NEW_DB = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "thermoguard.db")
+DEFAULT_DB_PATH = _LEGACY_DB if os.path.exists(_LEGACY_DB) else _NEW_DB
 
-def get_db_connection(db_path: Optional[str] = None) -> sqlite3.Connection:
-    """
-    Creates a thread-safe connection to SQLite with dictionary cursor and WAL mode.
-    """
-    path = db_path or os.getenv("CABINETSENSE_DB", DEFAULT_DB_PATH)
-    os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
-    conn = sqlite3.connect(path, timeout=10.0, check_same_thread=False)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA journal_mode = WAL;")
-    conn.execute("PRAGMA foreign_keys = ON;")
-    return conn
 
-def init_db(db_path: Optional[str] = None):
-    """
-    Initializes database tables and performance indexes if they don't exist.
-    """
-    conn = get_db_connection(db_path)
-    cur = conn.cursor()
-    
+def _create_tables(cur: sqlite3.Cursor):
+    """Creates tables and indexes if they do not exist."""
     # 1. Readings Table
     cur.execute("""
     CREATE TABLE IF NOT EXISTS readings (
@@ -76,38 +63,101 @@ def init_db(db_path: Optional[str] = None):
     cur.execute("CREATE INDEX IF NOT EXISTS idx_alerts_severity ON alerts(severity);")
     cur.execute("CREATE INDEX IF NOT EXISTS idx_events_timestamp ON system_events(timestamp DESC);")
 
+
+def ensure_schema(conn: sqlite3.Connection):
+    """Verifies that all required tables and indexes exist; auto-creates missing ones."""
+    cur = conn.cursor()
+    _create_tables(cur)
     conn.commit()
+
+
+def seed_initial_readings_if_empty(conn: sqlite3.Connection):
+    """Populates baseline nominal readings if the database is brand new and empty."""
+    from datetime import timedelta
+
+    cur = conn.cursor()
+    cur.execute("SELECT COUNT(*) FROM readings")
+    count = cur.fetchone()[0]
+    if count == 0:
+        now = datetime.now(UTC)
+        base_t = 24.6
+        base_h = 45.2
+        for i in range(15):
+            dt = now - timedelta(seconds=(14 - i) * 3)
+            t = round(base_t + (0.25 * (i % 3)) - 0.15, 2)
+            h = round(base_h + (0.4 * (i % 2)) - 0.2, 2)
+            cur.execute(
+                """
+                INSERT INTO readings (timestamp, temperature, humidity, source, is_anomaly, anomaly_score)
+                VALUES (?, ?, ?, 'SIMULATION', 0, 0.065)
+            """,
+                (dt.isoformat(), t, h),
+            )
+        conn.commit()
+
+
+def get_db_connection(db_path: str | None = None) -> sqlite3.Connection:
+    """
+    Creates a thread-safe connection to SQLite with dictionary cursor and WAL mode.
+    Guarantees schema exists automatically.
+    """
+    path = db_path or os.getenv("THERMOGUARD_DB", os.getenv("CABINETSENSE_DB", DEFAULT_DB_PATH))
+    os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
+    conn = sqlite3.connect(path, timeout=10.0, check_same_thread=False)
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA journal_mode = WAL;")
+    conn.execute("PRAGMA foreign_keys = ON;")
+    ensure_schema(conn)
+    return conn
+
+
+def init_db(db_path: str | None = None, seed: bool = False):
+    """
+    Initializes database tables, performance indexes, and seeds baseline readings.
+    """
+    conn = get_db_connection(db_path)
+    ensure_schema(conn)
+    if seed:
+        seed_initial_readings_if_empty(conn)
     conn.close()
+
 
 # -------------------------------------------------------------
 # READINGS OPERATIONS
 # -------------------------------------------------------------
 
-def is_duplicate_reading(conn: sqlite3.Connection, temperature: float, humidity: float, source: str, window_seconds: float = 0.5) -> bool:
+
+def is_duplicate_reading(
+    conn: sqlite3.Connection, temperature: float, humidity: float, source: str, window_seconds: float = 0.5
+) -> bool:
     """
     Prevents duplicate submissions if client sends repeated identical packets within <0.5s.
     """
     cur = conn.cursor()
-    cur.execute("""
+    cur.execute(
+        """
         SELECT timestamp, temperature, humidity FROM readings
         WHERE source = ?
         ORDER BY id DESC LIMIT 1
-    """, (source,))
+    """,
+        (source,),
+    )
     row = cur.fetchone()
     if not row:
         return False
-    
+
     try:
         last_dt = datetime.fromisoformat(row["timestamp"])
-        now_dt = datetime.now(timezone.utc)
+        now_dt = datetime.now(UTC)
         if last_dt.tzinfo is None:
-            last_dt = last_dt.replace(tzinfo=timezone.utc)
+            last_dt = last_dt.replace(tzinfo=UTC)
         diff = abs((now_dt - last_dt).total_seconds())
         if diff < window_seconds and abs(row["temperature"] - temperature) < 0.001 and abs(row["humidity"] - humidity) < 0.001:
             return True
-    except Exception:
-        pass
+    except (ValueError, TypeError, KeyError):
+        return False
     return False
+
 
 def insert_reading(
     temperature: float,
@@ -115,27 +165,30 @@ def insert_reading(
     source: str = "SIMULATION",
     is_anomaly: int = 0,
     anomaly_score: float = 0.0,
-    timestamp: Optional[str] = None,
-    db_path: Optional[str] = None
-) -> Dict[str, Any]:
+    timestamp: str | None = None,
+    db_path: str | None = None,
+) -> dict[str, Any]:
     """
     Inserts a validated telemetry reading into SQLite.
     """
     if timestamp is None:
-        timestamp = datetime.now(timezone.utc).isoformat()
+        timestamp = datetime.now(UTC).isoformat()
 
     conn = get_db_connection(db_path)
-    
+
     # Check duplicate
     if is_duplicate_reading(conn, temperature, humidity, source):
         conn.close()
         return {"duplicate": True, "message": "Ignored duplicate payload within deduplication window"}
 
     cur = conn.cursor()
-    cur.execute("""
+    cur.execute(
+        """
         INSERT INTO readings (timestamp, temperature, humidity, source, is_anomaly, anomaly_score)
         VALUES (?, ?, ?, ?, ?, ?)
-    """, (timestamp, float(temperature), float(humidity), source.upper(), int(is_anomaly), float(anomaly_score)))
+    """,
+        (timestamp, float(temperature), float(humidity), source.upper(), int(is_anomaly), float(anomaly_score)),
+    )
     reading_id = cur.lastrowid
     conn.commit()
     conn.close()
@@ -147,10 +200,11 @@ def insert_reading(
         "humidity": round(float(humidity), 2),
         "source": source.upper(),
         "is_anomaly": int(is_anomaly),
-        "anomaly_score": round(float(anomaly_score), 4)
+        "anomaly_score": round(float(anomaly_score), 4),
     }
 
-def get_latest_reading(source: Optional[str] = None, db_path: Optional[str] = None) -> Optional[Dict[str, Any]]:
+
+def get_latest_reading(source: str | None = None, db_path: str | None = None) -> dict[str, Any] | None:
     """
     Retrieves the most recent single reading.
     """
@@ -164,77 +218,98 @@ def get_latest_reading(source: Optional[str] = None, db_path: Optional[str] = No
     conn.close()
     return dict(row) if row else None
 
+
 def get_readings(
     limit: int = 100,
     offset: int = 0,
-    source: Optional[str] = None,
+    source: str | None = None,
     anomalies_only: bool = False,
     order: str = "DESC",
-    db_path: Optional[str] = None
-) -> List[Dict[str, Any]]:
+    db_path: str | None = None,
+) -> list[dict[str, Any]]:
     """
     Retrieves historical readings with flexible filtering.
+    When order='ASC', returns the latest N readings in chronological order for time-series charts.
     """
     conn = get_db_connection(db_path)
     cur = conn.cursor()
-    
-    query = "SELECT * FROM readings WHERE 1=1"
+
+    where_parts = []
     params = []
 
     if source:
-        query += " AND source = ?"
+        where_parts.append("source = ?")
         params.append(source.upper())
 
     if anomalies_only:
-        query += " AND is_anomaly = 1"
+        where_parts.append("is_anomaly = 1")
 
-    sort_order = "ASC" if order.upper() == "ASC" else "DESC"
-    query += f" ORDER BY id {sort_order} LIMIT ? OFFSET ?"
-    params.extend([max(1, min(limit, 2000)), max(0, offset)])
+    where_sql = (" AND " + " AND ".join(where_parts)) if where_parts else ""
+    lim = max(1, min(limit, 2000))
+    off = max(0, offset)
 
+    if order.upper() == "ASC":
+        query = f"""
+            SELECT * FROM (
+                SELECT * FROM readings WHERE 1=1{where_sql}
+                ORDER BY id DESC LIMIT ? OFFSET ?
+            ) ORDER BY id ASC
+        """
+    else:
+        query = f"SELECT * FROM readings WHERE 1=1{where_sql} ORDER BY id DESC LIMIT ? OFFSET ?"
+
+    params.extend([lim, off])
     cur.execute(query, params)
     rows = cur.fetchall()
     conn.close()
     return [dict(r) for r in rows]
 
+
 # -------------------------------------------------------------
 # ALERTS OPERATIONS
 # -------------------------------------------------------------
 
+
 def insert_alert(
     severity: str,
     message: str,
-    temperature: Optional[float] = None,
-    humidity: Optional[float] = None,
-    anomaly_score: Optional[float] = None,
+    temperature: float | None = None,
+    humidity: float | None = None,
+    anomaly_score: float | None = None,
     status: str = "UNRESOLVED",
-    timestamp: Optional[str] = None,
-    db_path: Optional[str] = None
-) -> Dict[str, Any]:
+    timestamp: str | None = None,
+    db_path: str | None = None,
+) -> dict[str, Any]:
     """
     Creates an alert record and writes a corresponding system event.
     """
     if timestamp is None:
-        timestamp = datetime.now(timezone.utc).isoformat()
-        
+        timestamp = datetime.now(UTC).isoformat()
+
     severity = severity.upper()
     if severity not in ("CRITICAL", "WARNING", "INFO"):
         severity = "WARNING"
 
     conn = get_db_connection(db_path)
     cur = conn.cursor()
-    cur.execute("""
+    cur.execute(
+        """
         INSERT INTO alerts (timestamp, severity, message, temperature, humidity, anomaly_score, status)
         VALUES (?, ?, ?, ?, ?, ?, ?)
-    """, (timestamp, severity, message, temperature, humidity, anomaly_score, status))
+    """,
+        (timestamp, severity, message, temperature, humidity, anomaly_score, status),
+    )
     alert_id = cur.lastrowid
-    
+
     # Mirror event
-    cur.execute("""
+    cur.execute(
+        """
         INSERT INTO system_events (timestamp, event_type, description, source)
         VALUES (?, ?, ?, ?)
-    """, (timestamp, f"ALERT_{severity}", message, "ALERT_ENGINE"))
-    
+    """,
+        (timestamp, f"ALERT_{severity}", message, "ALERT_ENGINE"),
+    )
+
     conn.commit()
     conn.close()
 
@@ -246,24 +321,22 @@ def insert_alert(
         "temperature": temperature,
         "humidity": humidity,
         "anomaly_score": anomaly_score,
-        "status": status
+        "status": status,
     }
 
+
 def get_alerts(
-    limit: int = 50,
-    severity: Optional[str] = None,
-    status: Optional[str] = None,
-    db_path: Optional[str] = None
-) -> List[Dict[str, Any]]:
+    limit: int = 50, severity: str | None = None, status: str | None = None, db_path: str | None = None
+) -> list[dict[str, Any]]:
     """
     Retrieves alerts with filtering options.
     """
     conn = get_db_connection(db_path)
     cur = conn.cursor()
-    
+
     query = "SELECT * FROM alerts WHERE 1=1"
     params = []
-    
+
     if severity:
         query += " AND severity = ?"
         params.append(severity.upper())
@@ -279,7 +352,8 @@ def get_alerts(
     conn.close()
     return [dict(r) for r in rows]
 
-def acknowledge_alert(alert_id: int, db_path: Optional[str] = None) -> bool:
+
+def acknowledge_alert(alert_id: int, db_path: str | None = None) -> bool:
     """
     Acknowledge an alert by ID.
     """
@@ -288,34 +362,43 @@ def acknowledge_alert(alert_id: int, db_path: Optional[str] = None) -> bool:
     cur.execute("UPDATE alerts SET status = 'ACKNOWLEDGED' WHERE id = ?", (alert_id,))
     updated = cur.rowcount > 0
     if updated:
-        ts = datetime.now(timezone.utc).isoformat()
-        cur.execute("""
+        ts = datetime.now(UTC).isoformat()
+        cur.execute(
+            """
             INSERT INTO system_events (timestamp, event_type, description, source)
             VALUES (?, 'ALERT_ACKNOWLEDGED', ?, 'USER')
-        """, (ts, f"Alert #{alert_id} acknowledged"))
+        """,
+            (ts, f"Alert #{alert_id} acknowledged"),
+        )
     conn.commit()
     conn.close()
     return updated
+
 
 # -------------------------------------------------------------
 # SYSTEM EVENTS & ANALYTICS
 # -------------------------------------------------------------
 
-def insert_system_event(event_type: str, description: str, source: str = "SYSTEM", db_path: Optional[str] = None):
+
+def insert_system_event(event_type: str, description: str, source: str = "SYSTEM", db_path: str | None = None):
     """
     Records an operational system event.
     """
-    ts = datetime.now(timezone.utc).isoformat()
+    ts = datetime.now(UTC).isoformat()
     conn = get_db_connection(db_path)
     cur = conn.cursor()
-    cur.execute("""
+    cur.execute(
+        """
         INSERT INTO system_events (timestamp, event_type, description, source)
         VALUES (?, ?, ?, ?)
-    """, (ts, event_type, description, source))
+    """,
+        (ts, event_type, description, source),
+    )
     conn.commit()
     conn.close()
 
-def get_system_events(limit: int = 50, db_path: Optional[str] = None) -> List[Dict[str, Any]]:
+
+def get_system_events(limit: int = 50, db_path: str | None = None) -> list[dict[str, Any]]:
     """
     Retrieves recent system events.
     """
@@ -326,7 +409,8 @@ def get_system_events(limit: int = 50, db_path: Optional[str] = None) -> List[Di
     conn.close()
     return [dict(r) for r in rows]
 
-def get_analytics_summary(db_path: Optional[str] = None) -> Dict[str, Any]:
+
+def get_analytics_summary(db_path: str | None = None) -> dict[str, Any]:
     """
     Calculates summary telemetry statistics, anomaly counts, and alert distribution.
     Never fabricates metrics: returns zeros if no data exists.
@@ -340,7 +424,7 @@ def get_analytics_summary(db_path: Optional[str] = None) -> Dict[str, Any]:
 
     # Aggregates
     cur.execute("""
-        SELECT 
+        SELECT
             MIN(temperature), MAX(temperature), AVG(temperature),
             MIN(humidity), MAX(humidity), AVG(humidity)
         FROM readings
@@ -353,7 +437,7 @@ def get_analytics_summary(db_path: Optional[str] = None) -> Dict[str, Any]:
 
     # Alerts breakdown
     cur.execute("""
-        SELECT 
+        SELECT
             COUNT(*),
             COUNT(CASE WHEN severity = 'CRITICAL' THEN 1 END),
             COUNT(CASE WHEN severity = 'WARNING' THEN 1 END),
@@ -378,14 +462,11 @@ def get_analytics_summary(db_path: Optional[str] = None) -> Dict[str, Any]:
             "max": round(h_max, 2) if h_max is not None else None,
             "avg": round(h_avg, 2) if h_avg is not None else None,
         },
-        "sources": {
-            "hardware": sources.get("HARDWARE", 0),
-            "simulation": sources.get("SIMULATION", 0)
-        },
+        "sources": {"hardware": sources.get("HARDWARE", 0), "simulation": sources.get("SIMULATION", 0)},
         "alerts": {
             "total": total_alerts or 0,
             "critical": critical_alerts or 0,
             "warning": warning_alerts or 0,
-            "unresolved": unresolved_alerts or 0
-        }
+            "unresolved": unresolved_alerts or 0,
+        },
     }

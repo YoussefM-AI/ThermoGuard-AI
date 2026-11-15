@@ -1,37 +1,39 @@
 """
-CabinetSense AI - Machine Learning Model Training Engine
+ThermoGuard AI - Machine Learning Model Training Engine
 Trains an unsupervised Isolation Forest on engineered industrial telemetry features.
 Saves the serialized model artifact using Joblib.
 """
 
 import os
 import sys
-from datetime import datetime, timezone
-import pandas as pd
-import numpy as np
-from sklearn.ensemble import IsolationForest
-import joblib
 
 # Ensure project root is available
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+_PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if _PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, _PROJECT_ROOT)
 
-from ai.preprocessing import compute_engineered_features, extract_feature_matrix, FEATURE_NAMES
-from ai.generate_dataset import generate_cabinet_dataset
+from datetime import UTC, datetime  # noqa: E402
+
+import joblib  # noqa: E402
+import numpy as np  # noqa: E402
+import pandas as pd  # noqa: E402
+from sklearn.ensemble import IsolationForest  # noqa: E402
+
+from ai.generate_dataset import generate_cabinet_dataset  # noqa: E402
+from ai.preprocessing import FEATURE_NAMES, extract_feature_matrix  # noqa: E402
 
 DATA_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "cabinet_data.csv")
 MODEL_PATH = os.path.join(os.path.dirname(__file__), "model.pkl")
 
+
 def train_isolation_forest(
-    dataset_path: str = DATA_PATH,
-    n_estimators: int = 100,
-    contamination: float = 0.05,
-    random_state: int = 42
+    dataset_path: str = DATA_PATH, n_estimators: int = 100, contamination: float = 0.05, random_state: int = 42
 ) -> dict:
     """
     Trains the Isolation Forest model on nominal operating conditions and saves the artifact.
     """
     print("=" * 60)
-    print("  CabinetSense AI - Isolation Forest Model Training")
+    print("  ThermoGuard AI - Isolation Forest Model Training")
     print("=" * 60)
 
     # 1. Load or Generate Dataset
@@ -62,11 +64,7 @@ def train_isolation_forest(
     # 4. Model Training
     print(f"Fitting IsolationForest(n_estimators={n_estimators}, contamination={contamination})...")
     clf = IsolationForest(
-        n_estimators=n_estimators,
-        max_samples="auto",
-        contamination=contamination,
-        random_state=random_state,
-        n_jobs=-1
+        n_estimators=n_estimators, max_samples="auto", contamination=contamination, random_state=random_state, n_jobs=-1
     )
     clf.fit(X_train)
 
@@ -79,20 +77,16 @@ def train_isolation_forest(
     # 5. Serialization
     model_bundle = {
         "model": clf,
-        "scaler": None, # Isolation Forest is tree-based and scale-invariant
+        "scaler": None,  # Isolation Forest is tree-based and scale-invariant
         "features": feature_cols,
         "metadata": {
             "model_type": "IsolationForest",
-            "trained_at": datetime.now(timezone.utc).isoformat(),
-            "training_samples": int(len(normal_df)),
+            "trained_at": datetime.now(UTC).isoformat(),
+            "training_samples": len(normal_df),
             "n_estimators": n_estimators,
             "contamination": contamination,
-            "score_stats": {
-                "min": round(min_score, 4),
-                "max": round(max_score, 4),
-                "mean": round(mean_score, 4)
-            }
-        }
+            "score_stats": {"min": round(min_score, 4), "max": round(max_score, 4), "mean": round(mean_score, 4)},
+        },
     }
 
     os.makedirs(os.path.dirname(MODEL_PATH), exist_ok=True)
@@ -102,6 +96,7 @@ def train_isolation_forest(
     print("=" * 60)
 
     return model_bundle["metadata"]
+
 
 if __name__ == "__main__":
     train_isolation_forest()

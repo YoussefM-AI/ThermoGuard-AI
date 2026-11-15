@@ -1,25 +1,37 @@
 """
-CabinetSense AI - AI Model Evaluation Engine
+ThermoGuard AI - AI Model Evaluation Engine
 Evaluates the trained Isolation Forest against labeled synthetic test datasets.
 Outputs confusion matrix, precision, recall, F1-score, and critical industrial limitations.
 """
 
 import os
 import sys
-import pandas as pd
-import numpy as np
-from sklearn.metrics import classification_report, confusion_matrix, precision_score, recall_score, f1_score, accuracy_score
-import joblib
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+# Ensure project root is available
+_PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if _PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, _PROJECT_ROOT)
 
-from ai.preprocessing import extract_feature_matrix
-from ai.predict import MODEL_PATH
-from ai.generate_dataset import generate_cabinet_dataset
+import joblib  # noqa: E402
+import numpy as np  # noqa: E402
+import pandas as pd  # noqa: E402
+from sklearn.metrics import (  # noqa: E402
+    accuracy_score,
+    classification_report,
+    confusion_matrix,
+    f1_score,
+    precision_score,
+    recall_score,
+)
 
-def evaluate_model(test_dataset_path: str = None) -> dict:
+from ai.generate_dataset import generate_cabinet_dataset  # noqa: E402
+from ai.predict import MODEL_PATH  # noqa: E402
+from ai.preprocessing import extract_feature_matrix  # noqa: E402
+
+
+def evaluate_model(test_dataset_path: str | None = None) -> dict:
     print("=" * 65)
-    print("  CabinetSense AI - Anomaly Detection Model Evaluation")
+    print("  ThermoGuard AI - Anomaly Detection Model Evaluation")
     print("=" * 65)
 
     if not os.path.exists(MODEL_PATH):
@@ -39,12 +51,12 @@ def evaluate_model(test_dataset_path: str = None) -> dict:
     y_true = test_df["is_anomaly"].to_numpy(dtype=int)
 
     # 2. Extract Features
-    X_test, features = extract_feature_matrix(test_df)
+    X_test, _features = extract_feature_matrix(test_df)
 
     # 3. Predict Outliers
     # IsolationForest: 1 for normal (inlier), -1 for anomaly (outlier)
     raw_preds = clf.predict(X_test)
-    y_pred = np.where(raw_preds == -1, 1, 0) # Map to binary 0/1
+    y_pred = np.where(raw_preds == -1, 1, 0)  # Map to binary 0/1
 
     # 4. Metrics
     acc = accuracy_score(y_true, y_pred)
@@ -54,7 +66,7 @@ def evaluate_model(test_dataset_path: str = None) -> dict:
     cm = confusion_matrix(y_true, y_pred)
 
     print("\n[CONFUSION MATRIX]")
-    print(f"                  Predicted Normal (0)   Predicted Anomaly (1)")
+    print("                  Predicted Normal (0)   Predicted Anomaly (1)")
     print(f"  Actual Normal (0)      {cm[0, 0]:<15}         {cm[0, 1]:<15}")
     print(f"  Actual Anomaly (1)     {cm[1, 0]:<15}         {cm[1, 1]:<15}")
 
@@ -83,8 +95,9 @@ def evaluate_model(test_dataset_path: str = None) -> dict:
         "precision": round(prec, 4),
         "recall": round(rec, 4),
         "f1_score": round(f1, 4),
-        "confusion_matrix": cm.tolist()
+        "confusion_matrix": cm.tolist(),
     }
+
 
 if __name__ == "__main__":
     evaluate_model()

@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CabinetSense AI | Industrial IoT & Anomaly Platform</title>
+  <title>ThermoGuard AI | Industrial IoT & Anomaly Platform</title>
   
   <!-- Modern Industrial Typography -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
   
-  <!-- Chart.js for SCADA Visualizations -->
+  <!-- Chart.js for Industrial Visualizations -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   
   <!-- Lucide Icons -->
@@ -23,13 +23,13 @@
     <!-- COLLAPSIBLE SIDEBAR -->
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-header">
-        <a href="#overview" class="brand-wrapper">
+        <a href="#dashboard" class="brand-wrapper">
           <div class="brand-icon-box">
-            <i data-lucide="shield-alert"></i>
+            <i data-lucide="shield-check"></i>
           </div>
           <div class="brand-text">
-            <h1>CabinetSense<span>.AI</span></h1>
-            <span class="brand-badge">SCADA v1.0</span>
+            <h1>ThermoGuard<span>.AI</span></h1>
+            <span class="brand-badge">IoT Core v2.0</span>
           </div>
         </a>
         <button class="sidebar-toggle-btn" id="sidebar-toggle" title="Toggle Sidebar">
@@ -37,52 +37,34 @@
         </button>
       </div>
 
+      <!-- 4 SIMPLE NAVIGATION TABS -->
       <nav class="sidebar-nav">
-        <div class="nav-section-title">Telemetry & Ops</div>
-        <a class="nav-link active" data-page="overview">
+        <div class="nav-section-title">Navigation</div>
+        <a class="nav-link active" data-page="dashboard" id="nav-dashboard">
           <i data-lucide="layout-dashboard"></i>
-          <span>Overview</span>
+          <span>Dashboard</span>
         </a>
-        <a class="nav-link" data-page="monitoring">
-          <i data-lucide="activity"></i>
-          <span>Live Monitoring</span>
+        <a class="nav-link" data-page="history" id="nav-history">
+          <i data-lucide="clock"></i>
+          <span>History</span>
         </a>
-
-        <div class="nav-section-title">AI & Intelligence</div>
-        <a class="nav-link" data-page="ai-center">
-          <i data-lucide="cpu"></i>
-          <span>AI Intelligence</span>
-        </a>
-        <a class="nav-link" data-page="anomalies">
-          <i data-lucide="alert-triangle"></i>
-          <span>Anomaly Detection</span>
-        </a>
-        <a class="nav-link" data-page="alerts">
+        <a class="nav-link" data-page="alerts" id="nav-alerts">
           <i data-lucide="bell"></i>
-          <span>Alerts Center</span>
+          <span>Alerts</span>
+          <span class="nav-badge" id="nav-alert-count">0</span>
         </a>
-
-        <div class="nav-section-title">Lab & Analytics</div>
-        <a class="nav-link" data-page="analytics">
-          <i data-lucide="bar-chart-3"></i>
-          <span>Historical Analytics</span>
-        </a>
-        <a class="nav-link" data-page="simulation">
-          <i data-lucide="flask-conical"></i>
-          <span>Simulation Lab</span>
-        </a>
-        <a class="nav-link" data-page="settings">
+        <a class="nav-link" data-page="settings" id="nav-settings">
           <i data-lucide="settings"></i>
-          <span>System Settings</span>
+          <span>Settings</span>
         </a>
       </nav>
 
       <div class="sidebar-footer">
         <div class="system-mini-status">
-          <div class="status-beacon pulse" id="global-beacon"></div>
+          <div class="status-beacon pulse online" id="global-beacon"></div>
           <div>
-            <div style="font-weight: 600; color: var(--text-primary);" id="global-status-text">System Nominal</div>
-            <div style="color: var(--text-muted); font-size: 10px;" id="sidebar-time">--:--:-- UTC</div>
+            <div style="font-weight: 600; color: var(--text-primary);" id="global-status-text">System Online</div>
+            <div style="color: var(--text-muted); font-size: 11px;" id="sidebar-time">--:--:-- UTC</div>
           </div>
         </div>
       </div>
@@ -94,535 +76,520 @@
       <header class="topbar">
         <div class="topbar-left">
           <div class="page-title-box">
-            <h2 id="current-page-title">Operational Overview</h2>
-            <p id="current-page-desc">Real-time industrial electrical cabinet environmental diagnostics</p>
+            <h2 id="current-page-title">Operational Dashboard</h2>
+            <p id="current-page-desc">Real-time thermal & humidity telemetry with AI anomaly surveillance</p>
           </div>
         </div>
 
         <div class="topbar-right">
+          <!-- Wokwi / ESP32 Hardware Status Chip -->
           <div class="chip chip-hardware disconnected" id="top-hw-pill">
             <i data-lucide="radio"></i>
             <span id="top-hw-text">ESP32 Offline</span>
           </div>
 
-          <div class="chip chip-mode simulation" id="top-mode-pill">
-            <i data-lucide="zap"></i>
-            <span id="top-mode-text">SIMULATION MODE</span>
+          <!-- Monitoring Mode Chip -->
+          <div class="chip chip-mode live" id="top-mode-pill">
+            <i data-lucide="activity"></i>
+            <span id="top-mode-text">STANDBY</span>
           </div>
 
+          <!-- Live Clock -->
           <div class="clock-widget" id="live-clock">00:00:00 UTC</div>
         </div>
       </header>
 
-      <!-- CONTENT BODY (MULTI-PAGE VIEWS) -->
+      <!-- CONTENT BODY -->
       <main class="content-body">
-        
+
         <!-- ============================================== -->
-        <!-- 1. OVERVIEW PAGE -->
+        <!-- VIEW 1: DASHBOARD (MAIN FOCUSED INTERFACE)     -->
         <!-- ============================================== -->
-        <section class="page-view active" id="view-overview">
-          <!-- Top KPI Grid -->
+        <section class="page-view active" id="view-dashboard">
+          
+          <!-- System Status Hero Banner -->
+          <div class="system-hero-card" id="system-hero-banner">
+            <div class="hero-left">
+              <div class="hero-beacon-circle online" id="hero-beacon">
+                <i data-lucide="check" id="hero-icon"></i>
+              </div>
+              <div class="hero-text">
+                <div class="hero-status-title" id="hero-title">System Status: ONLINE</div>
+                <div class="hero-status-sub" id="hero-desc">
+                  Cabinet sensors operational. AI Isolation Forest continuously monitoring environmental stability.
+                </div>
+              </div>
+            </div>
+            <div class="hero-right">
+              <div class="hero-stat-pill">
+                <span class="label">Last Telemetry:</span>
+                <span class="val" id="hero-last-time">Awaiting data...</span>
+              </div>
+              <div class="hero-stat-pill">
+                <span class="label">Active Source:</span>
+                <span class="val highlight" id="hero-source">--</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 4 Core Metric KPI Cards -->
           <div class="kpi-grid">
-            <div class="kpi-card">
+            <!-- 1. System Status -->
+            <div class="kpi-card" id="kpi-system-card">
               <div class="kpi-header">
-                <span class="kpi-title">Cabinet Temperature</span>
-                <div class="kpi-icon"><i data-lucide="thermometer"></i></div>
+                <span class="kpi-label">System Online / Offline</span>
+                <div class="kpi-icon-box blue"><i data-lucide="server"></i></div>
               </div>
-              <div class="kpi-value-row">
-                <span class="kpi-value" id="kpi-temp">--.-</span>
-                <span class="kpi-unit">°C</span>
-              </div>
-              <div class="kpi-footer">
-                <span class="trend-badge trend-normal" id="kpi-temp-badge">Normal</span>
-                <span>Ref: 20°C - 35°C</span>
+              <div class="kpi-body">
+                <div class="kpi-value text-emerald" id="kpi-system-status">ONLINE</div>
+                <div class="kpi-sub">
+                  <span class="badge badge-normal" id="kpi-hw-badge">ESP32 Inactive</span>
+                  <span class="sub-text" id="kpi-system-uptime">Backend: Healthy</span>
+                </div>
               </div>
             </div>
 
-            <div class="kpi-card">
+            <!-- 2. Current Temperature -->
+            <div class="kpi-card" id="kpi-temp-card">
               <div class="kpi-header">
-                <span class="kpi-title">Relative Humidity</span>
-                <div class="kpi-icon"><i data-lucide="droplets"></i></div>
+                <span class="kpi-label">Cabinet Temperature</span>
+                <div class="kpi-icon-box orange"><i data-lucide="thermometer"></i></div>
               </div>
-              <div class="kpi-value-row">
-                <span class="kpi-value" id="kpi-hum">--.-</span>
-                <span class="kpi-unit">%</span>
-              </div>
-              <div class="kpi-footer">
-                <span class="trend-badge trend-normal" id="kpi-hum-badge">Nominal</span>
-                <span>Ref: 30% - 60%</span>
+              <div class="kpi-body">
+                <div class="kpi-value"><span id="kpi-temp-val">--.-</span><span class="unit">°C</span></div>
+                <div class="kpi-sub">
+                  <span class="badge badge-normal" id="kpi-temp-status">Nominal</span>
+                  <span class="sub-text">Thresholds: 38°C / 52°C</span>
+                </div>
               </div>
             </div>
 
-            <div class="kpi-card">
+            <!-- 3. Current Humidity -->
+            <div class="kpi-card" id="kpi-hum-card">
               <div class="kpi-header">
-                <span class="kpi-title">AI Anomaly Score</span>
-                <div class="kpi-icon"><i data-lucide="brain-circuit"></i></div>
+                <span class="kpi-label">Relative Humidity</span>
+                <div class="kpi-icon-box blue"><i data-lucide="droplets"></i></div>
               </div>
-              <div class="kpi-value-row">
-                <span class="kpi-value" id="kpi-ai-score">+0.000</span>
-                <span class="kpi-unit">IF</span>
-              </div>
-              <div class="kpi-footer">
-                <span class="trend-badge trend-normal" id="kpi-ai-badge">Inlier (Normal)</span>
-                <span>Threshold &lt; 0.0</span>
+              <div class="kpi-body">
+                <div class="kpi-value"><span id="kpi-hum-val">--.-</span><span class="unit">%</span></div>
+                <div class="kpi-sub">
+                  <span class="badge badge-normal" id="kpi-hum-status">Nominal</span>
+                  <span class="sub-text">Thresholds: 70% / 85%</span>
+                </div>
               </div>
             </div>
 
-            <div class="kpi-card">
+            <!-- 4. AI Anomaly Analysis -->
+            <div class="kpi-card" id="kpi-ai-card">
               <div class="kpi-header">
-                <span class="kpi-title">Active Alerts</span>
-                <div class="kpi-icon"><i data-lucide="shield-alert"></i></div>
+                <span class="kpi-label">AI Anomaly Status</span>
+                <div class="kpi-icon-box purple"><i data-lucide="brain"></i></div>
               </div>
-              <div class="kpi-value-row">
-                <span class="kpi-value" id="kpi-alerts-count">0</span>
-                <span class="kpi-unit">Unresolved</span>
-              </div>
-              <div class="kpi-footer">
-                <span id="kpi-alerts-subtext">No active hazards</span>
-                <a href="#alerts" class="btn-pill btn-secondary" onclick="app.navigate('alerts')">View</a>
+              <div class="kpi-body">
+                <div class="kpi-value text-emerald" id="kpi-ai-status">NORMAL</div>
+                <div class="kpi-sub">
+                  <span class="badge badge-normal" id="kpi-ai-badge">Score: 0.00</span>
+                  <span class="sub-text" id="kpi-ai-model">Isolation Forest</span>
+                </div>
               </div>
             </div>
           </div>
 
-          <!-- Dual Quick Charts -->
-          <div class="charts-grid">
-            <div class="glass-panel">
-              <div class="panel-header">
-                <div class="panel-title">
-                  <i data-lucide="trending-up"></i>
-                  Thermal Trajectory (°C)
-                </div>
-                <div class="btn-group">
-                  <span class="chip chip-mode" id="quick-temp-val">--.- °C</span>
-                </div>
-              </div>
-              <div class="chart-container">
-                <canvas id="overviewTempChart"></canvas>
-              </div>
-            </div>
-
-            <div class="glass-panel">
-              <div class="panel-header">
-                <div class="panel-title">
-                  <i data-lucide="waves"></i>
-                  Moisture Dynamics (%)
-                </div>
-                <div class="btn-group">
-                  <span class="chip chip-mode" id="quick-hum-val">--.- %</span>
-                </div>
-              </div>
-              <div class="chart-container">
-                <canvas id="overviewHumChart"></canvas>
-              </div>
-            </div>
-          </div>
-
-          <!-- Bottom Summary Cards -->
-          <div class="glass-panel" style="margin-top: 20px;">
+          <!-- Main Interactive Telemetry Chart Section -->
+          <div class="dashboard-panel chart-panel">
             <div class="panel-header">
-              <div class="panel-title">
-                <i data-lucide="terminal"></i>
-                System Operational Status & Telemetry Stream
+              <div class="panel-title-group">
+                <i data-lucide="trending-up"></i>
+                <div>
+                  <h3>Historical Environmental Telemetry</h3>
+                  <p>Temperature & Humidity trends with industrial alert limits</p>
+                </div>
               </div>
-              <div style="font-size: 11px; color: var(--text-muted);" id="latest-ts">Last sync: --</div>
+              <div class="panel-actions">
+                <div class="chart-legend-custom">
+                  <span class="legend-item"><span class="legend-dot temp"></span> Temperature (°C)</span>
+                  <span class="legend-item"><span class="legend-dot hum"></span> Humidity (%)</span>
+                  <span class="legend-item"><span class="legend-line warn"></span> Warning (38°C)</span>
+                  <span class="legend-item"><span class="legend-line crit"></span> Critical (52°C)</span>
+                </div>
+              </div>
             </div>
-            <div class="table-responsive">
-              <table class="cyber-table">
-                <thead>
-                  <tr>
-                    <th>Observation ID</th>
-                    <th>Timestamp (UTC)</th>
-                    <th>Temperature</th>
-                    <th>Humidity</th>
-                    <th>Data Source</th>
-                    <th>ML Classification</th>
-                    <th>Isolation Score</th>
-                  </tr>
-                </thead>
-                <tbody id="overview-recent-table">
-                  <tr><td colspan="7" style="text-align: center; color: var(--text-muted);">Awaiting telemetry stream...</td></tr>
-                </tbody>
-              </table>
+            <div class="panel-body">
+              <div class="chart-container-single">
+                <canvas id="mainHistoryChart"></canvas>
+              </div>
             </div>
           </div>
+
+          <!-- Recent Alerts & Quick Simulation Action -->
+          <div class="dashboard-split-grid">
+            <!-- Left: Recent Alerts Desk -->
+            <div class="dashboard-panel">
+              <div class="panel-header">
+                <div class="panel-title-group">
+                  <i data-lucide="alert-octagon"></i>
+                  <div>
+                    <h3>Recent System Alerts</h3>
+                    <p>Latest active alarms and threshold breaches</p>
+                  </div>
+                </div>
+                <a href="#alerts" class="btn btn-sm btn-ghost" onclick="app.navigate('alerts')">View All</a>
+              </div>
+              <div class="panel-body no-padding">
+                <div class="table-responsive">
+                  <table class="data-table" id="dashboard-alerts-table">
+                    <thead>
+                      <tr>
+                        <th>Time</th>
+                        <th>Severity</th>
+                        <th>Message</th>
+                        <th>Temp / Hum</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody id="dashboard-alerts-tbody">
+                      <tr>
+                        <td colspan="5" class="empty-state">No recent alerts recorded. System operating normally.</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right: Wokwi & Simulation Quick Connect -->
+            <div class="dashboard-panel">
+              <div class="panel-header">
+                <div class="panel-title-group">
+                  <i data-lucide="play-circle"></i>
+                  <div>
+                    <h3>Wokwi & Simulation Control</h3>
+                    <p>Connect online simulation or inject test scenarios</p>
+                  </div>
+                </div>
+              </div>
+              <div class="panel-body">
+                <div class="simulation-quick-box">
+                  <div class="wokwi-quick-status">
+                    <div class="status-indicator-box">
+                      <span class="dot" id="quick-wokwi-dot"></span>
+                      <span class="text" id="quick-wokwi-text">Wokwi ESP32: Listening for connection</span>
+                    </div>
+                    <div class="endpoint-code-box">
+                      <code>http://10.0.2.2:5000/api/readings</code>
+                      <button class="btn btn-xs btn-outline" id="quick-copy-url" onclick="app.copyEndpointUrl()">
+                        <i data-lucide="copy"></i> Copy
+                      </button>
+                    </div>
+                  </div>
+
+                  <div class="quick-sim-controls">
+                    <label class="control-label">Inject Simulation Scenario:</label>
+                    <div class="sim-selector-grid">
+                      <button class="sim-btn active" data-scenario="normal" onclick="app.setQuickScenario('normal')">
+                        Normal Baseline
+                      </button>
+                      <button class="sim-btn" data-scenario="gradual_temp" onclick="app.setQuickScenario('gradual_temp')">
+                        Thermal Spike (55°C)
+                      </button>
+                      <button class="sim-btn" data-scenario="abnormal_hum" onclick="app.setQuickScenario('abnormal_hum')">
+                        Humidity Leak (88%)
+                      </button>
+                      <button class="sim-btn" data-scenario="combined" onclick="app.setQuickScenario('combined')">
+                        Combined Failure
+                      </button>
+                      <button class="sim-btn" data-scenario="network_drop" onclick="app.setQuickScenario('network_drop')">
+                        Sensor Packet Drop
+                      </button>
+                    </div>
+
+                    <div class="sim-action-row">
+                      <button class="btn btn-primary" id="btn-quick-start-sim" onclick="app.toggleSimulation()">
+                        <i data-lucide="play"></i> Start Simulation
+                      </button>
+                      <a href="#settings" class="btn btn-outline" onclick="app.navigate('settings')">
+                        <i data-lucide="cpu"></i> Wokwi Full Instructions
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
         </section>
 
         <!-- ============================================== -->
-        <!-- 2. LIVE MONITORING PAGE -->
+        <!-- VIEW 2: HISTORY (TELEMETRY LOGS & CSV EXPORT)  -->
         <!-- ============================================== -->
-        <section class="page-view" id="view-monitoring">
-          <div class="glass-panel" style="margin-bottom: 24px;">
+        <section class="page-view" id="view-history">
+          <div class="dashboard-panel">
             <div class="panel-header">
-              <div class="panel-title">
-                <i data-lucide="gauge"></i>
-                Real-Time Enclosure Temperature Line Stream
-              </div>
-              <div class="btn-group">
-                <button class="btn btn-secondary btn-pill" onclick="app.setChartHistory(20)">20 Pts</button>
-                <button class="btn btn-secondary btn-pill" onclick="app.setChartHistory(50)">50 Pts</button>
-                <button class="btn btn-secondary btn-pill" onclick="app.setChartHistory(100)">100 Pts</button>
-              </div>
-            </div>
-            <div class="chart-container" style="height: 320px;">
-              <canvas id="liveTempChart"></canvas>
-            </div>
-          </div>
-
-          <div class="glass-panel">
-            <div class="panel-header">
-              <div class="panel-title">
-                <i data-lucide="droplet"></i>
-                Real-Time Enclosure Relative Humidity Line Stream
-              </div>
-              <div style="font-size: 12px; color: var(--text-secondary);">
-                Safe Cabinet Window: 30% - 60% RH
-              </div>
-            </div>
-            <div class="chart-container" style="height: 320px;">
-              <canvas id="liveHumChart"></canvas>
-            </div>
-          </div>
-        </section>
-
-        <!-- ============================================== -->
-        <!-- 3. AI INTELLIGENCE CENTER -->
-        <!-- ============================================== -->
-        <section class="page-view" id="view-ai-center">
-          <div class="charts-grid">
-            <!-- AI Engine Profile -->
-            <div class="glass-panel">
-              <div class="panel-header">
-                <div class="panel-title">
-                  <i data-lucide="brain"></i>
-                  Isolation Forest Architecture
-                </div>
-                <span class="severity-badge sev-info" id="ai-engine-status">OPERATIONAL</span>
-              </div>
-              <p style="color: var(--text-secondary); margin-bottom: 16px;">
-                Unsupervised ensemble algorithm designed for high-dimensional environmental outlier detection.
-                Learns the multi-dimensional manifold of nominal industrial cabinet thermodynamics.
-              </p>
-
-              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
-                <div style="background: rgba(0,0,0,0.25); padding: 12px; border-radius: 8px;">
-                  <div style="font-size: 11px; color: var(--text-muted);">Ensemble Trees</div>
-                  <div style="font-size: 18px; font-weight: 700; color: var(--accent-cyan);" id="ai-trees">100 Trees</div>
-                </div>
-                <div style="background: rgba(0,0,0,0.25); padding: 12px; border-radius: 8px;">
-                  <div style="font-size: 11px; color: var(--text-muted);">Assumed Contamination</div>
-                  <div style="font-size: 18px; font-weight: 700; color: var(--accent-blue-light);" id="ai-contam">5.0%</div>
-                </div>
-                <div style="background: rgba(0,0,0,0.25); padding: 12px; border-radius: 8px;">
-                  <div style="font-size: 11px; color: var(--text-muted);">Feature Space</div>
-                  <div style="font-size: 18px; font-weight: 700; color: var(--text-primary);">6 Dimensions</div>
-                </div>
-                <div style="background: rgba(0,0,0,0.25); padding: 12px; border-radius: 8px;">
-                  <div style="font-size: 11px; color: var(--text-muted);">Training Records</div>
-                  <div style="font-size: 18px; font-weight: 700; color: var(--status-normal);" id="ai-samples">11,242</div>
+              <div class="panel-title-group">
+                <i data-lucide="database"></i>
+                <div>
+                  <h3>Cabinet Telemetry Logs</h3>
+                  <p>Complete historical log of sensor transmissions with filtering and export</p>
                 </div>
               </div>
-
-              <div class="panel-header" style="margin-top: 16px; margin-bottom: 8px;">
-                <span class="panel-title" style="font-size: 13px;">Multivariate Decision Score Scale</span>
-                <span id="ai-score-readout" style="font-family: var(--font-mono); font-weight: 700;">+0.065</span>
-              </div>
-              <div class="score-meter-container">
-                <div class="meter-bar-track">
-                  <div class="meter-bar-fill" style="width: 100%;"></div>
-                  <div class="meter-marker" id="score-meter-marker" style="left: 65%;"></div>
+              <div class="panel-actions">
+                <div class="filter-group">
+                  <label for="history-source-filter">Source:</label>
+                  <select id="history-source-filter" class="form-select" onchange="app.filterHistory()">
+                    <option value="ALL">All Sources</option>
+                    <option value="HARDWARE">Hardware (ESP32)</option>
+                    <option value="SIMULATION">Simulation</option>
+                    <option value="ANOMALY">Anomalies Only</option>
+                  </select>
                 </div>
-                <div style="display: flex; justify-content: space-between; font-size: 10px; color: var(--text-muted); margin-top: 4px;">
-                  <span>Outlier Anomaly (&lt; 0.0)</span>
-                  <span>Zero Boundary</span>
-                  <span>Nominal Inlier (&gt; 0.0)</span>
-                </div>
-              </div>
-            </div>
-
-            <!-- Live Explanation & Retraining -->
-            <div class="glass-panel">
-              <div class="panel-header">
-                <div class="panel-title">
-                  <i data-lucide="check-circle-2"></i>
-                  Current Environmental Assessment
-                </div>
-                <button class="btn btn-primary btn-pill" id="btn-retrain-ai" onclick="app.retrainModel()">
-                  <i data-lucide="refresh-cw"></i> Retrain Model
+                <a href="/api/export/csv" class="btn btn-outline" id="btn-export-csv" download>
+                  <i data-lucide="download"></i> Export CSV
+                </a>
+                <button class="btn btn-ghost" onclick="app.fetchReadings()">
+                  <i data-lucide="refresh-cw"></i> Refresh
                 </button>
               </div>
-
-              <div style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: 8px; padding: 16px; margin-bottom: 20px;" id="ai-explanation-box">
-                <div style="font-weight: 600; color: var(--status-normal); margin-bottom: 6px;" id="ai-assessment-header">STATUS: NORMAL CLIMATE</div>
-                <div style="color: var(--text-secondary); font-size: 13px;" id="ai-assessment-text">
-                  Environmental conditions align with learned normal operational profile.
-                </div>
-              </div>
-
-              <div class="panel-title" style="font-size: 13px; margin-bottom: 12px;">Active Feature Vector Inputs</div>
+            </div>
+            <div class="panel-body no-padding">
               <div class="table-responsive">
-                <table class="cyber-table">
+                <table class="data-table" id="history-table">
                   <thead>
                     <tr>
-                      <th>Feature Name</th>
-                      <th>Engineering Logic</th>
-                      <th>Live Value</th>
+                      <th>ID</th>
+                      <th>Timestamp (UTC)</th>
+                      <th>Temperature</th>
+                      <th>Humidity</th>
+                      <th>Source</th>
+                      <th>AI Assessment</th>
+                      <th>Anomaly Score</th>
                     </tr>
                   </thead>
-                  <tbody>
-                    <tr><td><code>temperature</code></td><td>Raw instantaneous sensor temp</td><td id="feat-temp">-- °C</td></tr>
-                    <tr><td><code>humidity</code></td><td>Raw instantaneous sensor RH</td><td id="feat-hum">-- %</td></tr>
-                    <tr><td><code>delta_temperature</code></td><td>1st order gradient (dT/dt)</td><td id="feat-dtemp">-- °C</td></tr>
-                    <tr><td><code>delta_humidity</code></td><td>1st order moisture gradient (dH/dt)</td><td id="feat-dhum">-- %</td></tr>
-                    <tr><td><code>rolling_temp_avg</code></td><td>Smoothed 5-point moving thermal baseline</td><td id="feat-rtemp">-- °C</td></tr>
-                    <tr><td><code>rolling_hum_avg</code></td><td>Smoothed 5-point moving moisture baseline</td><td id="feat-rhum">-- %</td></tr>
+                  <tbody id="history-tbody">
+                    <tr>
+                      <td colspan="7" class="loading-state">Loading telemetry logs...</td>
+                    </tr>
                   </tbody>
                 </table>
               </div>
-
-              <div style="margin-top: 16px; padding: 12px; background: rgba(0,0,0,0.3); border-radius: 8px; border-left: 3px solid var(--accent-cyan); font-size: 11px; color: var(--text-muted);">
-                <strong>Academic / Industrial Disclaimer:</strong> This unsupervised machine learning model detects statistical shifts in ambient cabinet climate. It does NOT diagnose internal switchgear electrical arcing, insulation breakdown, or replace hardware electrical relays.
-              </div>
             </div>
           </div>
         </section>
 
         <!-- ============================================== -->
-        <!-- 4. ANOMALY DETECTION PAGE -->
-        <!-- ============================================== -->
-        <section class="page-view" id="view-anomalies">
-          <div class="glass-panel">
-            <div class="panel-header">
-              <div class="panel-title">
-                <i data-lucide="alert-octagon"></i>
-                Environmental Anomaly Incident Registry
-              </div>
-              <div class="btn-group">
-                <button class="btn btn-secondary btn-pill" onclick="app.refreshAnomalies()">Refresh Log</button>
-              </div>
-            </div>
-
-            <div class="table-responsive">
-              <table class="cyber-table">
-                <thead>
-                  <tr>
-                    <th>ID</th>
-                    <th>Timestamp (UTC)</th>
-                    <th>Temperature</th>
-                    <th>Humidity</th>
-                    <th>Anomaly Score</th>
-                    <th>Classification</th>
-                    <th>Source</th>
-                  </tr>
-                </thead>
-                <tbody id="anomalies-table-body">
-                  <tr><td colspan="7" style="text-align: center; color: var(--text-muted);">No anomalies detected. Cabinet climate is nominal.</td></tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </section>
-
-        <!-- ============================================== -->
-        <!-- 5. ALERTS CENTER -->
+        <!-- VIEW 3: ALERTS (SCADA ALARM MANAGEMENT DESK)   -->
         <!-- ============================================== -->
         <section class="page-view" id="view-alerts">
-          <div class="glass-panel">
+          <div class="dashboard-panel">
             <div class="panel-header">
-              <div class="panel-title">
+              <div class="panel-title-group">
                 <i data-lucide="bell-ring"></i>
-                Active & Historical SCADA Alarm Console
+                <div>
+                  <h3>SCADA Alarm & Alert Desk</h3>
+                  <p>Manage threshold breaches, temperature anomalies, and sensor faults</p>
+                </div>
               </div>
-              <div class="btn-group">
-                <button class="btn btn-secondary btn-pill active" onclick="app.filterAlerts('ALL')">All</button>
-                <button class="btn btn-secondary btn-pill" onclick="app.filterAlerts('CRITICAL')">Critical</button>
-                <button class="btn btn-secondary btn-pill" onclick="app.filterAlerts('WARNING')">Warning</button>
-                <button class="btn btn-secondary btn-pill" onclick="app.filterAlerts('UNRESOLVED')">Unresolved</button>
-              </div>
-            </div>
-
-            <div class="table-responsive">
-              <table class="cyber-table">
-                <thead>
-                  <tr>
-                    <th>Alert ID</th>
-                    <th>Timestamp</th>
-                    <th>Severity</th>
-                    <th>Diagnostic Message</th>
-                    <th>Snapshot</th>
-                    <th>Status</th>
-                    <th>Action</th>
-                  </tr>
-                </thead>
-                <tbody id="alerts-table-body">
-                  <tr><td colspan="7" style="text-align: center; color: var(--text-muted);">No alerts logged.</td></tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </section>
-
-        <!-- ============================================== -->
-        <!-- 6. HISTORICAL ANALYTICS -->
-        <!-- ============================================== -->
-        <section class="page-view" id="view-analytics">
-          <div class="kpi-grid">
-            <div class="kpi-card">
-              <div class="kpi-title">Total Records Ingested</div>
-              <div class="kpi-value" id="ana-total-readings">0</div>
-              <div class="kpi-footer">Indexed in SQLite WAL</div>
-            </div>
-            <div class="kpi-card">
-              <div class="kpi-title">Anomaly Rate</div>
-              <div class="kpi-value" id="ana-anomaly-rate">0.0%</div>
-              <div class="kpi-footer">Isolation Forest outliers</div>
-            </div>
-            <div class="kpi-card">
-              <div class="kpi-title">Thermal Range</div>
-              <div class="kpi-value" id="ana-temp-range">-- / --</div>
-              <div class="kpi-footer">Min / Max Recorded (°C)</div>
-            </div>
-            <div class="kpi-card">
-              <div class="kpi-title">Moisture Range</div>
-              <div class="kpi-value" id="ana-hum-range">-- / --</div>
-              <div class="kpi-footer">Min / Max Recorded (%)</div>
-            </div>
-          </div>
-
-          <div class="glass-panel" style="margin-top: 24px;">
-            <div class="panel-header">
-              <div class="panel-title">
-                <i data-lucide="download"></i>
-                Data Export & Archival
-              </div>
-              <a href="/api/export/csv" class="btn btn-primary" download>
-                <i data-lucide="file-spreadsheet"></i> Export Full Telemetry CSV
-              </a>
-            </div>
-            <p style="color: var(--text-secondary); font-size: 13px;">
-              Export all authenticated sensor timestamps, calibrated temperature readings, relative humidity, data source tags, and Isolation Forest score vectors for university laboratory reports.
-            </p>
-          </div>
-        </section>
-
-        <!-- ============================================== -->
-        <!-- 7. SIMULATION LAB -->
-        <!-- ============================================== -->
-        <section class="page-view" id="view-simulation">
-          <div class="glass-panel" style="margin-bottom: 24px;">
-            <div class="panel-header">
-              <div class="panel-title">
-                <i data-lucide="flask-conical"></i>
-                Industrial Simulation Scenario Orchestrator
-              </div>
-              <div class="btn-group">
-                <button class="btn btn-primary" id="btn-sim-start" onclick="app.startSimulation()">
-                  <i data-lucide="play"></i> Start Simulation
-                </button>
-                <button class="btn btn-danger" id="btn-sim-stop" onclick="app.stopSimulation()">
-                  <i data-lucide="square"></i> Stop Simulation
+              <div class="panel-actions">
+                <div class="filter-tabs">
+                  <button class="tab-btn active" data-filter="ALL" onclick="app.setAlertFilter('ALL')">All</button>
+                  <button class="tab-btn" data-filter="UNRESOLVED" onclick="app.setAlertFilter('UNRESOLVED')">Unresolved</button>
+                  <button class="tab-btn" data-filter="CRITICAL" onclick="app.setAlertFilter('CRITICAL')">Critical</button>
+                  <button class="tab-btn" data-filter="WARNING" onclick="app.setAlertFilter('WARNING')">Warning</button>
+                </div>
+                <button class="btn btn-ghost" onclick="app.fetchAlerts()">
+                  <i data-lucide="refresh-cw"></i> Refresh
                 </button>
               </div>
             </div>
-
-            <p style="color: var(--text-secondary); margin-bottom: 20px;">
-              Select a simulation scenario to inject realistic telemetry into the Flask REST API without physical hardware.
-            </p>
-
-            <div class="scenario-grid">
-              <div class="scenario-card active" data-scenario="normal" onclick="app.selectScenario('normal')">
-                <div class="scenario-title">1. Normal Conditions</div>
-                <div class="scenario-desc">Stable climate: ~24.5°C, ~45% RH with natural diurnal drift and micro-fluctuations.</div>
+            <div class="panel-body no-padding">
+              <div class="table-responsive">
+                <table class="data-table" id="alerts-table">
+                  <thead>
+                    <tr>
+                      <th>ID</th>
+                      <th>Timestamp</th>
+                      <th>Severity</th>
+                      <th>Alert Message</th>
+                      <th>Sensor Reading</th>
+                      <th>Anomaly Score</th>
+                      <th>Status</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="alerts-tbody">
+                    <tr>
+                      <td colspan="8" class="loading-state">Loading alerts...</td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
-
-              <div class="scenario-card" data-scenario="gradual_temp" onclick="app.selectScenario('gradual_temp')">
-                <div class="scenario-title">2. Gradual Temp Rise</div>
-                <div class="scenario-desc">Thermal buildup simulating clogged ventilation filters or cabinet cooling fan decay (climbs to 55°C+).</div>
-              </div>
-
-              <div class="scenario-card" data-scenario="abnormal_hum" onclick="app.selectScenario('abnormal_hum')">
-                <div class="scenario-title">3. Abnormal Humidity</div>
-                <div class="scenario-desc">Simulates enclosure gasket seal degradation or ambient water infiltration (surges to 85%+).</div>
-              </div>
-
-              <div class="scenario-card" data-scenario="combined" onclick="app.selectScenario('combined')">
-                <div class="scenario-title">4. Combined Anomaly</div>
-                <div class="scenario-desc">Severe multi-hazard failure: rapid temperature escalation coupled with extreme humidity swings.</div>
-              </div>
-
-              <div class="scenario-card" data-scenario="network_drop" onclick="app.selectScenario('network_drop')">
-                <div class="scenario-title">5. Sensor / Network Drop</div>
-                <div class="scenario-desc">Simulates sensor wiring disconnection or Wi-Fi packet drops, testing timeout alert recovery.</div>
-              </div>
-            </div>
-
-            <div style="display: flex; align-items: center; gap: 20px; background: rgba(0,0,0,0.25); padding: 16px; border-radius: 8px;">
-              <div style="font-weight: 600; font-size: 13px;">Cadence (Interval):</div>
-              <input type="range" id="sim-cadence-slider" min="0.5" max="5.0" step="0.5" value="1.5" style="flex: 1;" oninput="document.getElementById('sim-cadence-val').textContent = this.value + 's'">
-              <span id="sim-cadence-val" style="font-family: var(--font-mono); font-weight: 700; color: var(--accent-cyan);">1.5s</span>
-            </div>
-          </div>
-
-          <!-- Simulation Live Status Banner -->
-          <div class="glass-panel">
-            <div class="panel-header">
-              <div class="panel-title">
-                <i data-lucide="terminal"></i>
-                Simulator Engine Status
-              </div>
-              <span class="severity-badge sev-info" id="sim-state-badge">IDLE</span>
-            </div>
-            <div style="font-family: var(--font-mono); font-size: 13px; color: var(--text-secondary);" id="sim-log-text">
-              Simulator engine is standing by.
             </div>
           </div>
         </section>
 
         <!-- ============================================== -->
-        <!-- 8. SYSTEM SETTINGS -->
+        <!-- VIEW 4: SETTINGS (WOKWI, HARDWARE & HYBRID)    -->
         <!-- ============================================== -->
         <section class="page-view" id="view-settings">
-          <div class="glass-panel" style="margin-bottom: 24px;">
-            <div class="panel-header">
-              <div class="panel-title">
-                <i data-lucide="sliders"></i>
-                Cabinet Operational Thresholds (Read-Only Safety Parameters)
+          <div class="settings-grid">
+            
+            <!-- Card 1: Wokwi Online Simulation Connection Guide -->
+            <div class="dashboard-panel">
+              <div class="panel-header">
+                <div class="panel-title-group">
+                  <i data-lucide="wifi"></i>
+                  <div>
+                    <h3>Wokwi Online Simulation Setup</h3>
+                    <p>Connect your virtual ESP32 node to this live dashboard</p>
+                  </div>
+                </div>
+              </div>
+              <div class="panel-body">
+                <div class="instruction-block">
+                  <h4>How to connect Wokwi to this dashboard:</h4>
+                  <ol class="step-list">
+                    <li>
+                      <strong>Open Wokwi Simulation:</strong>
+                      Go to <a href="https://wokwi.com" target="_blank" rel="noopener">wokwi.com</a> and create an ESP32 project.
+                    </li>
+                    <li>
+                      <strong>Paste Firmware & Circuit:</strong>
+                      Copy code from <code>wokwi/sketch.ino</code> and diagram from <code>wokwi/diagram.json</code>.
+                    </li>
+                    <li>
+                      <strong>Configure Endpoint URL:</strong>
+                      In <code>sketch.ino</code>, set <code>DASHBOARD_URL</code>:
+                      <div class="code-copy-group">
+                        <input type="text" id="wokwi-endpoint-input" class="form-input" readonly value="http://10.0.2.2:5000/api/readings">
+                        <button class="btn btn-sm btn-primary" onclick="app.copyInputUrl('wokwi-endpoint-input')">
+                          <i data-lucide="copy"></i> Copy URL
+                        </button>
+                      </div>
+                      <small class="help-text">
+                        * Note: <code>10.0.2.2</code> is the IP used by the Wokwi IoT Gateway to reach your host PC. If using Cloud/Tunnel, paste your public HTTPS URL.
+                      </small>
+                    </li>
+                    <li>
+                      <strong>Run & Interact:</strong>
+                      Click Play in Wokwi, then click the virtual <strong>DHT22</strong> sensor to slide temperature & humidity in real time!
+                    </li>
+                  </ol>
+                </div>
               </div>
             </div>
 
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
-              <div style="background: rgba(0,0,0,0.25); padding: 14px; border-radius: 8px;">
-                <div style="font-size: 11px; color: var(--text-muted);">Temperature Warning</div>
-                <div style="font-size: 20px; font-weight: 700; color: var(--status-warning);">38.0 °C</div>
+            <!-- Card 2: Physical Hardware & Sensor Pinout -->
+            <div class="dashboard-panel">
+              <div class="panel-header">
+                <div class="panel-title-group">
+                  <i data-lucide="cpu"></i>
+                  <div>
+                    <h3>Hardware Pinout & Configuration</h3>
+                    <p>Physical ESP32 node wiring specification</p>
+                  </div>
+                </div>
               </div>
-              <div style="background: rgba(0,0,0,0.25); padding: 14px; border-radius: 8px;">
-                <div style="font-size: 11px; color: var(--text-muted);">Temperature Critical</div>
-                <div style="font-size: 20px; font-weight: 700; color: var(--status-critical);">52.0 °C</div>
-              </div>
-              <div style="background: rgba(0,0,0,0.25); padding: 14px; border-radius: 8px;">
-                <div style="font-size: 11px; color: var(--text-muted);">Humidity Warning</div>
-                <div style="font-size: 20px; font-weight: 700; color: var(--status-warning);">70.0 %</div>
-              </div>
-              <div style="background: rgba(0,0,0,0.25); padding: 14px; border-radius: 8px;">
-                <div style="font-size: 11px; color: var(--text-muted);">Humidity Critical</div>
-                <div style="font-size: 20px; font-weight: 700; color: var(--status-critical);">85.0 %</div>
+              <div class="panel-body">
+                <div class="pinout-card">
+                  <div class="pinout-table-wrapper">
+                    <table class="data-table">
+                      <thead>
+                        <tr>
+                          <th>Component</th>
+                          <th>Sensor Model</th>
+                          <th>Pin</th>
+                          <th>ESP32 GPIO</th>
+                          <th>Voltage</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td><strong>Physical Node</strong></td>
+                          <td><span class="badge badge-normal">DHT11</span></td>
+                          <td>DATA (Out)</td>
+                          <td><strong class="text-blue">GPIO 4</strong></td>
+                          <td>3.3V (3V3)</td>
+                        </tr>
+                        <tr>
+                          <td><strong>Virtual Simulation</strong></td>
+                          <td><span class="badge badge-purple">DHT22</span></td>
+                          <td>SDA / DATA</td>
+                          <td><strong class="text-blue">GPIO 4</strong></td>
+                          <td>3.3V (3V3)</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                  <div class="hardware-note">
+                    <i data-lucide="info"></i>
+                    <div>
+                      <strong>Hardware Distinction Maintained:</strong>
+                      Physical hardware uses <code>DHT11</code> on GPIO 4 (configured in <code>esp32/cabinet_sensor.ino</code>).
+                      Virtual Wokwi simulation uses <code>DHT22</code> on GPIO 4 (configured in <code>wokwi/sketch.ino</code>).
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
 
-          <div class="glass-panel">
-            <div class="panel-header">
-              <div class="panel-title">
-                <i data-lucide="cpu"></i>
-                ESP32 Hardware Specification & Connection Info
+            <!-- Card 3: Hybrid IoT + Cloud Architecture -->
+            <div class="dashboard-panel">
+              <div class="panel-header">
+                <div class="panel-title-group">
+                  <i data-lucide="cloud"></i>
+                  <div>
+                    <h3>Hybrid IoT + Cloud Architecture</h3>
+                    <p>Run locally or deploy to cloud so PC can remain powered off</p>
+                  </div>
+                </div>
+              </div>
+              <div class="panel-body">
+                <div class="cloud-status-box">
+                  <p>
+                    ThermoGuard AI is packaged for cloud hosting (Render, Railway, Fly.io, or Docker container).
+                    When deployed to the cloud, set <code>USE_CLOUD_ENDPOINT = true</code> in the ESP32 firmware, and your IoT cabinet node will stream telemetry 24/7 without requiring your personal computer to stay on.
+                  </p>
+                  <div class="deploy-chips">
+                    <span class="chip"><i data-lucide="check-circle"></i> Docker Ready (Dockerfile included)</span>
+                    <span class="chip"><i data-lucide="check-circle"></i> Procfile / Gunicorn Configured</span>
+                    <span class="chip"><i data-lucide="check-circle"></i> Render.yaml Blueprint</span>
+                  </div>
+                </div>
               </div>
             </div>
-            <p style="color: var(--text-secondary); font-size: 13px; line-height: 1.6;">
-              <strong>Microcontroller:</strong> ESP32 WROOM-32 DevKit<br>
-              <strong>Sensor:</strong> DHT11 Temperature & Humidity Sensor (Single-bus digital protocol)<br>
-              <strong>Default Data Pin:</strong> GPIO 4 (with internal or 4.7kΩ-10kΩ pull-up resistor)<br>
-              <strong>Communication Protocol:</strong> Wi-Fi 802.11 b/g/n, HTTP POST REST (<code>/api/readings</code>)<br>
-              <strong>Payload Format:</strong> <code>{"temperature": 25.4, "humidity": 45.0, "source": "HARDWARE"}</code>
-            </p>
+
+            <!-- Card 4: AI Model & Anomaly Diagnostics -->
+            <div class="dashboard-panel">
+              <div class="panel-header">
+                <div class="panel-title-group">
+                  <i data-lucide="brain"></i>
+                  <div>
+                    <h3>AI Anomaly Detection Diagnostics</h3>
+                    <p>Isolation Forest hyper-parameters and feature pipeline</p>
+                  </div>
+                </div>
+              </div>
+              <div class="panel-body">
+                <div class="model-meta-grid" id="ai-model-meta-grid">
+                  <div class="meta-item">
+                    <span class="label">Model:</span>
+                    <span class="val">Isolation Forest (scikit-learn)</span>
+                  </div>
+                  <div class="meta-item">
+                    <span class="label">Status:</span>
+                    <span class="val text-emerald" id="meta-ai-status">OPERATIONAL</span>
+                  </div>
+                  <div class="meta-item">
+                    <span class="label">Contamination:</span>
+                    <span class="val" id="meta-ai-contamination">5% (0.05)</span>
+                  </div>
+                  <div class="meta-item">
+                    <span class="label">Features (6):</span>
+                    <span class="val" id="meta-ai-features">Temp, Hum, ΔT, ΔH, Roll_T, Roll_H</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
           </div>
         </section>
 
@@ -630,10 +597,7 @@
     </div>
   </div>
 
-  <!-- TOAST NOTIFICATION CONTAINER -->
-  <div id="toast-container"></div>
-
-  <!-- APPLICATION JAVASCRIPT CONTROLLER -->
+  <div class="toast-container" id="toast-container"></div>
   <script src="script.js"></script>
 </body>
 </html>

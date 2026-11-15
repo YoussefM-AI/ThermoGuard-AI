@@ -1,20 +1,13 @@
 """
-CabinetSense AI - Feature Engineering and Preprocessing Pipeline
+ThermoGuard AI - Feature Engineering and Preprocessing Pipeline
 Ensures identical feature computation across dataset training, offline evaluation, and live inference.
 """
 
-import pandas as pd
 import numpy as np
-from typing import Tuple, List
+import pandas as pd
 
-FEATURE_NAMES = [
-    "temperature",
-    "humidity",
-    "delta_temperature",
-    "delta_humidity",
-    "rolling_temp_avg",
-    "rolling_hum_avg"
-]
+FEATURE_NAMES = ["temperature", "humidity", "delta_temperature", "delta_humidity", "rolling_temp_avg", "rolling_hum_avg"]
+
 
 def compute_engineered_features(df: pd.DataFrame, window_size: int = 5) -> pd.DataFrame:
     """
@@ -49,7 +42,8 @@ def compute_engineered_features(df: pd.DataFrame, window_size: int = 5) -> pd.Da
 
     return df
 
-def extract_feature_matrix(df: pd.DataFrame) -> Tuple[np.ndarray, List[str]]:
+
+def extract_feature_matrix(df: pd.DataFrame) -> tuple[np.ndarray, list[str]]:
     """
     Extracts numerical NumPy feature matrix strictly matching FEATURE_NAMES.
     """

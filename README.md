@@ -1,27 +1,28 @@
-# CabinetSense AI
-## Smart Industrial Electrical Cabinet Monitoring & AI-Based Anomaly Detection
+# ThermoGuard AI
+## Smart Industrial Environmental Monitoring & AI-Based Anomaly Detection
 
-[![Python Version](https://img.shields.io/badge/python-3.14%2B-blue.svg)](https://www.python.org/)
+[![Python Version](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
 [![Framework](https://img.shields.io/badge/framework-Flask%203.1-black.svg)](https://flask.palletsprojects.com/)
 [![Database](https://img.shields.io/badge/database-SQLite3%20WAL-lightgrey.svg)](https://www.sqlite.org/)
 [![Machine Learning](https://img.shields.io/badge/AI-Isolation%20Forest-green.svg)](https://scikit-learn.org/)
-[![Frontend](https://img.shields.io/badge/UI-SCADA%20Cyber-cyan.svg)](#)
-[![Tests](https://img.shields.io/badge/tests-28%20passing-brightgreen.svg)](#)
+[![Frontend](https://img.shields.io/badge/UI-Modern%20SCADA%20Dark-cyan.svg)](#)
+[![Cloud Ready](https://img.shields.io/badge/Cloud-Docker%20%7C%20Render%20%7C%20Procfile-purple.svg)](#)
 
 ---
 
 ## 1. Project Overview & Problem Statement
 
-Industrial electrical cabinets house critical switchgear, motor drives, transformers, and electronic control systems. Adverse microclimatic conditions inside these enclosures—such as excessive thermal accumulation, ventilation fan blockage, dust accumulation, or moisture ingress from compromised seals—accelerate component degradation and increase the risk of premature failure.
+Industrial electrical cabinets house critical switchgear, motor drives, transformers, and electronic control systems. Adverse microclimatic conditions inside these enclosures—such as excessive thermal accumulation, ventilation fan blockage, dust accumulation, or moisture ingress from compromised seals—accelerate component degradation and cause critical hardware downtime.
 
-**CabinetSense AI** is a complete, real-world IoT and unsupervised machine learning prototype designed to monitor temperature and relative humidity inside electrical cabinets. The platform:
-1. Ingests high-frequency environmental telemetry from physical **ESP32** hardware or a **Python Simulation Laboratory**.
-2. Evaluates incoming observations in real-time using an unsupervised **Isolation Forest** machine learning model.
-3. Automatically dispatches tiered SCADA alarms (**WARNING** and **CRITICAL**) based on physical safety bounds and multivariate anomaly scores.
-4. Visualizes telemetry and diagnostic assessments on a dark-themed, glassmorphic **Industry 4.0 Command Center**.
+**ThermoGuard AI** is a complete, real-world Hybrid IoT and unsupervised machine learning platform designed to monitor temperature and relative humidity inside electrical enclosures:
+1. **Telemetry Ingestion:** Receives environmental telemetry from physical **ESP32** nodes, online **Wokwi** simulations, or an in-process **Simulation Engine**.
+2. **AI Anomaly Detection:** Evaluates incoming observations in real time using an unsupervised **Isolation Forest** model with engineered rolling & differential features.
+3. **Smart Tiered Alarms:** Dispatches tiered alarms (**WARNING** and **CRITICAL**) based on physical safety bounds and multivariate anomaly scores.
+4. **Streamlined Web Dashboard:** Clean, modern, dark navy/black UI with 4 focused views: **Dashboard**, **History**, **Alerts**, and **Settings**.
+5. **Hybrid IoT + Cloud Architecture:** Designed to run locally on your LAN during prototyping or deployed to the cloud (Docker / Render / Railway) so your personal computer can stay powered off.
 
 > [!IMPORTANT]
-> **Academic & Industrial Scope:** CabinetSense AI monitors and detects *environmental anomalies* (thermal spikes, humidity surges, unusual rate-of-change). It does **not** diagnose internal electrical faults (e.g. arc flash, short circuit) nor replace certified industrial safety relays.
+> **Industrial Scope:** ThermoGuard AI monitors and detects *environmental anomalies* (thermal spikes, humidity surges, unusual rate-of-change). It does **not** diagnose internal electrical faults (e.g., arc flash, short circuit) nor replace certified industrial safety disconnect relays.
 
 ---
 
@@ -29,17 +30,17 @@ Industrial electrical cabinets house critical switchgear, motor drives, transfor
 
 ```text
        +-----------------------+              +---------------------------+
-       |   ESP32 Microcontroller|              |   Python Simulation Lab   |
-       |  DHT11 Sensor (GPIO 4)|              |  5 Industrial Scenarios   |
+       |   ESP32 Physical Node |              |    Wokwi Cloud Simulation |
+       |  DHT11 Sensor (GPIO 4)|              |    DHT22 Sensor (GPIO 4)  |
        +-----------+-----------+              +-------------+-------------+
                    |                                        |
-       Wi-Fi / HTTP POST                                 HTTP POST
+       Wi-Fi / HTTP POST                               HTTP POST (Gateway / Tunnel)
                    |                                        |
                    +-------------------+--------------------+
                                        |
                                        v
                     +------------------------------------+
-                    |        Python Flask REST API       |
+                    |       ThermoGuard AI Engine        |
                     |     (backend/app.py - Port 5000)   |
                     +------------------+-----------------+
                                        |
@@ -49,8 +50,8 @@ Industrial electrical cabinets house critical switchgear, motor drives, transfor
   +---------------------------+                 +---------------------------+
   |    SQLite Relational DB   |                 |     AI / ML Pipeline      |
   |  - readings (WAL mode)    |                 |  - Feature Engineering    |
-  |  - alerts                 |                 |  - Isolation Forest Model |
-  |  - system_events          |                 |  - Decision Score Meter   |
+  |  - alerts (unresolved/ack)|                 |  - Isolation Forest Model |
+  |  - system_events          |                 |  - Anomaly Score Meter    |
   +---------------------------+                 +---------------------------+
                 ^                                             |
                 |                                             |
@@ -58,12 +59,12 @@ Industrial electrical cabinets house critical switchgear, motor drives, transfor
                                        |
                                        v
                     +------------------------------------+
-                    |     Premium SCADA Web Dashboard    |
-                    |   (Chart.js, HTML5, CSS3, Lucide)  |
-                    |   - Overview & Live SCADA Charts   |
-                    |   - AI Intelligence Center         |
-                    |   - Anomaly Registry & Alarm Desk  |
-                    |   - Simulation Orchestrator        |
+                    |     Streamlined SCADA Dashboard    |
+                    |     (Chart.js, HTML5, CSS3, JS)    |
+                    |   - Dashboard (Status, KPIs, Chart)|
+                    |   - History (Logs & CSV Export)    |
+                    |   - Alerts (SCADA Alarm Desk)      |
+                    |   - Settings (Wokwi & Pinout Info) |
                     +------------------------------------+
 ```
 
@@ -71,55 +72,55 @@ Industrial electrical cabinets house critical switchgear, motor drives, transfor
 
 ## 3. Technology Stack
 
-- **Microcontroller Firmware:** ESP32 (C++/Arduino Core), `WiFi.h`, `HTTPClient.h`, `DHT.h`.
-- **Backend Application:** Python 3, Flask 3.1, Flask-CORS, Gunicorn-compatible.
-- **Database Engine:** SQLite3 in Write-Ahead Logging (`WAL`) mode with indexing.
+- **Microcontroller Firmware:** ESP32 (C++/Arduino Core), `WiFi.h`, `HTTPClient.h`, `WiFiClientSecure.h`, `DHT.h`.
+- **Backend Service:** Python 3, Flask 3.1, Flask-CORS, Gunicorn WSGI.
+- **Database Engine:** SQLite3 with Write-Ahead Logging (`WAL`) mode and automatic schema migrations.
 - **Machine Learning Engine:** Scikit-Learn (Isolation Forest), Pandas, NumPy, Joblib.
-- **Frontend Presentation:** HTML5, CSS3 (Modern SCADA Dark Palette), JavaScript (ES6+), Chart.js 4.4, Lucide Icons.
+- **Frontend Dashboard:** HTML5, CSS3 (Modern SCADA Dark Navy `#080C14` / `#111A2E`), JavaScript (ES6+), Chart.js 4.4, Lucide Icons.
+- **Cloud Packaging:** Docker container (`Dockerfile`), `Procfile`, and `render.yaml` blueprint.
 
 ---
 
-## 4. Hardware Wiring & ESP32 Configuration
+## 4. Hardware Wiring & Wokwi Simulation Invariants
 
-### 4.1 Component Bill of Materials (BOM)
-- 1x ESP32 Development Board (ESP32-WROOM-32).
-- 1x DHT11 Temperature & Relative Humidity Sensor.
-- 1x Breadboard & 3x Jumper Wires.
-- 1x USB Micro-B or Type-C Data Cable.
+> [!IMPORTANT]
+> **Strict Sensor Pinout & Distinction:**
+> - **Physical ESP32 Node:** Uses **DHT11** connected to **GPIO 4** (configured in [`esp32/cabinet_sensor.ino`](file:///c:/Users/HP/.gemini/antigravity/scratch/CabinetSense-AI/esp32/cabinet_sensor.ino)).
+> - **Virtual Wokwi Node:** Uses **DHT22** connected to **GPIO 4** (configured in [`wokwi/sketch.ino`](file:///c:/Users/HP/.gemini/antigravity/scratch/CabinetSense-AI/wokwi/sketch.ino) and [`wokwi/diagram.json`](file:///c:/Users/HP/.gemini/antigravity/scratch/CabinetSense-AI/wokwi/diagram.json)).
 
-### 4.2 Pinout Connection Table
+### 4.1 Physical Hardware Pinout Table
 
-| DHT11 Pin | Description | ESP32 Pin Connection |
-| :--- | :--- | :--- |
-| **VCC (+)** | Power Supply | **3V3** (3.3V Output) |
-| **DATA (OUT)**| Single-Bus Serial Data | **GPIO 4** |
-| **GND (-)** | Ground Reference | **GND** |
+| DHT11 Pin | Description | ESP32 Pin Connection | Voltage |
+| :--- | :--- | :--- | :--- |
+| **VCC (+)** | Power Supply | **3V3** (3.3V Output) | 3.3V DC |
+| **DATA (OUT)**| Single-Bus Serial Data | **GPIO 4** | 3.3V Logic |
+| **GND (-)** | Ground Reference | **GND** | 0V |
 
-*Note: If using a 4-pin bare DHT11 sensor instead of a 3-pin module, place a 10kΩ pull-up resistor between VCC (3.3V) and DATA (GPIO 4).*
+*Note: If using a bare 4-pin DHT11 without a built-in module PCB, place a 10kΩ pull-up resistor between VCC (3.3V) and DATA (GPIO 4).*
 
-### 4.3 Flashing the ESP32 Firmware
-1. Open [`esp32/cabinet_sensor.ino`](file:///c:/Users/HP/.gemini/antigravity/scratch/CabinetSense-AI/esp32/cabinet_sensor.ino) in the Arduino IDE.
-2. Select Board: **ESP32 Dev Module**.
-3. Install required libraries via Library Manager:
-   - `DHT sensor library` by Adafruit
-   - `Adafruit Unified Sensor`
-4. Update configuration credentials:
-   ```cpp
-   const char* WIFI_SSID     = "YOUR_WIFI_NETWORK";
-   const char* WIFI_PASSWORD = "YOUR_WIFI_PASSWORD";
-   const char* SERVER_IP     = "192.168.1.X"; // Local IP of your PC running Flask
-   const int   SERVER_PORT   = 5000;
-   ```
-5. Click **Upload** and open Serial Monitor at **115200 baud**.
+### 4.2 Connecting Wokwi Simulation to the Dashboard
+
+When running the virtual simulation on [Wokwi](https://wokwi.com/):
+1. Copy [`wokwi/sketch.ino`](file:///c:/Users/HP/.gemini/antigravity/scratch/CabinetSense-AI/wokwi/sketch.ino) and [`wokwi/diagram.json`](file:///c:/Users/HP/.gemini/antigravity/scratch/CabinetSense-AI/wokwi/diagram.json) into Wokwi.
+2. In `sketch.ino`, configure the target endpoint:
+   - **Local Gateway Mode (with Wokwi IoT Gateway running):**
+     ```cpp
+     const char* DASHBOARD_URL = "http://10.0.2.2:5000/api/readings";
+     ```
+   - **Cloud or Tunnel Mode (Render, Railway, Cloudflared, Ngrok):**
+     ```cpp
+     const char* DASHBOARD_URL = "https://your-public-url.com/api/readings";
+     ```
+3. Start the simulation. Click the DHT22 component on the schematic to slide temperature & humidity and observe the live response on your ThermoGuard AI dashboard.
 
 ---
 
 ## 5. Machine Learning Pipeline & Feature Engineering
 
 ### 5.1 Why Isolation Forest?
-Traditional threshold alarms fire only when a variable crosses an absolute boundary (e.g. $T > 52^\circ\text{C}$). However, early environmental anomalies manifest as **unusual multidimensional trajectories** (e.g., rapid thermal rate of change $\frac{dT}{dt}$ during low ambient hours or sudden moisture shifts without ambient temperature changes).
+Traditional threshold alarms fire only when an absolute ceiling is breached (e.g. $T > 52^\circ\text{C}$). However, early equipment failure or filter blockage manifests as **unusual dynamic trajectories** (e.g. sharp thermal rise during cold ambient periods or anomalous humidity rates of change).
 
-Isolation Forest isolates outliers by randomly partitioning feature dimensions into recursive orthogonal hyperplanes. Anomalies require significantly fewer partitions (shorter path lengths) to isolate than nominal cluster points.
+Isolation Forest isolates unusual multidimensional points using recursive random decision cuts. Outliers require significantly fewer splits to separate from nominal operational clusters.
 
 ### 5.2 Feature Space (6 Dimensions)
 1. `temperature`: Instantaneous calibrated temperature ($^\circ\text{C}$).
@@ -129,29 +130,33 @@ Isolation Forest isolates outliers by randomly partitioning feature dimensions i
 5. `rolling_temp_avg`: 5-point moving thermal baseline average.
 6. `rolling_hum_avg`: 5-point moving moisture baseline average.
 
-### 5.3 Model Performance on Synthetic Evaluation Testbed
-Executed against an independent 4,000-sample test set (8% anomaly ratio):
-- **Accuracy:** 95.05%
-- **Anomaly Recall:** 100.00% (Captured all 388 true environmental anomaly signatures)
-- **Precision:** 66.21%
-- **F1-Score:** 79.67%
-- **Serialized Artifact:** [`ai/model.pkl`](file:///c:/Users/HP/.gemini/antigravity/scratch/CabinetSense-AI/ai/model.pkl)
+---
+
+## 6. Dashboard Interface (4 Simple Views)
+
+ThermoGuard AI features a streamlined, dark navy/black UI designed for industrial reliability:
+
+1. **Dashboard:**
+   - Real-time System ONLINE/OFFLINE status beacon with live heartbeat.
+   - 4 KPI metric cards: System Connectivity, Current Temperature, Current Humidity, AI Anomaly Assessment.
+   - Combined historical telemetry chart with industrial threshold guide lines (38°C warning, 52°C critical).
+   - Recent Alerts list with 1-click Acknowledge button.
+   - Quick Wokwi & simulation controls.
+2. **History:**
+   - Full telemetry log with pagination and source filter (Hardware vs Simulation vs Anomalies).
+   - 1-click **Export CSV** button calling `/api/export/csv`.
+3. **Alerts:**
+   - SCADA Alarm Desk with severity filters (All, Unresolved, Critical, Warning).
+   - Instant alarm acknowledgment with recorded resolution audits.
+4. **Settings:**
+   - Wokwi simulation guide with 1-click endpoint URL copy.
+   - Physical hardware pinout and wiring reference.
+   - Hybrid Cloud architecture status.
+   - Isolation Forest hyper-parameter diagnostics.
 
 ---
 
-## 6. Simulation Laboratory (Mode A)
-
-The project includes an integrated simulator supporting 5 realistic industrial electrical cabinet scenarios:
-
-1. **Normal Conditions:** Stable nominal climate ($\approx 24.5^\circ\text{C}$, $\approx 45\%$ RH) with harmonic diurnal temperature cycles and natural Gaussian noise.
-2. **Gradual Temperature Increase:** Progressive heat accumulation simulating clogged cabinet filters or cooling fan degradation (climbs to $55^\circ\text{C}+$).
-3. **Abnormal Humidity:** Rapid moisture surge simulating door gasket seal degradation or ambient water leaks (surges to $85\%+$).
-4. **Combined Anomaly:** Simultaneous thermal escalation and extreme humidity swings.
-5. **Sensor / Network Drop:** Simulates loose sensor cables or Wi-Fi packet drops to test timeout alert recovery.
-
----
-
-## 7. Quickstart Installation & Running
+## 7. Quickstart Installation & Local Execution
 
 ### 7.1 Clone and Environment Setup
 ```bash
@@ -164,7 +169,7 @@ python tests/test_environment.py
 
 ### 7.2 Training the AI Model
 ```bash
-# Generate synthetic dataset (12,000 records)
+# Generate synthetic dataset
 python ai/generate_dataset.py
 
 # Train and serialize the Isolation Forest model
@@ -181,21 +186,14 @@ python backend/app.py
 Open your browser and navigate to:
 **`http://127.0.0.1:5000`**
 
-### 7.4 Running the Simulation
-- **Via Web Dashboard:** Navigate to the **Simulation Lab** tab, select a scenario, adjust the interval slider, and click **Start Simulation**.
-- **Via CLI:**
-  ```bash
-  python simulation/simulator.py --scenario gradual_temp --interval 1.5 --steps 50
-  ```
-
 ---
 
 ## 8. REST API Reference
 
 | Method | Endpoint | Description |
 | :--- | :--- | :--- |
-| `GET` | `/api/health` | Health check & SQLite database connection status |
-| `GET` | `/api/status` | Consolidated state: hardware status, active mode, AI, KPIs |
+| `GET` | `/api/health` | Health check & SQLite database connectivity |
+| `GET` | `/api/status` | System state: hardware status, active mode, AI, KPIs |
 | `POST`| `/api/readings` | Ingests sensor reading (`{"temperature": X, "humidity": Y, "source": "..."}`) |
 | `GET` | `/api/readings` | Retrieves historical readings (supports `limit`, `offset`, `source`, `anomalies_only`) |
 | `GET` | `/api/readings/latest` | Retrieves the most recent single sensor observation |
@@ -213,28 +211,15 @@ Open your browser and navigate to:
 
 ## 9. Automated Test Suite
 
-CabinetSense AI includes 28 automated unit, integration, and end-to-end tests:
+ThermoGuard AI includes an automated unit and integration test suite:
 
 ```bash
 python -m unittest discover tests
 ```
 
-**Test Breakdown:**
-- [`tests/test_environment.py`](file:///c:/Users/HP/.gemini/antigravity/scratch/CabinetSense-AI/tests/test_environment.py): Library imports, Scikit-learn instantiation, SQLite memory engine.
-- [`tests/test_simulation.py`](file:///c:/Users/HP/.gemini/antigravity/scratch/CabinetSense-AI/tests/test_simulation.py): All 5 simulation scenarios, bounding, packet drop flags, and simulator thread lifecycle.
-- [`tests/test_database.py`](file:///c:/Users/HP/.gemini/antigravity/scratch/CabinetSense-AI/tests/test_database.py): Schema initialization, reading insertion, deduplication window, alert lifecycle, and analytics calculations.
+- [`tests/test_environment.py`](file:///c:/Users/HP/.gemini/antigravity/scratch/CabinetSense-AI/tests/test_environment.py): Library imports, Scikit-learn instantiation, SQLite engine.
+- [`tests/test_simulation.py`](file:///c:/Users/HP/.gemini/antigravity/scratch/CabinetSense-AI/tests/test_simulation.py): All 5 simulation scenarios, bounding, packet drop flags, thread lifecycle.
+- [`tests/test_database.py`](file:///c:/Users/HP/.gemini/antigravity/scratch/CabinetSense-AI/tests/test_database.py): Schema initialization, reading insertion, deduplication window, alert lifecycle.
 - [`tests/test_api.py`](file:///c:/Users/HP/.gemini/antigravity/scratch/CabinetSense-AI/tests/test_api.py): REST endpoint contracts, payload validation, status codes, simulation triggers, CSV export.
-- [`tests/test_ai.py`](file:///c:/Users/HP/.gemini/antigravity/scratch/CabinetSense-AI/tests/test_ai.py): Model serialization, feature engineering, normal prediction, anomaly sensitivity, missing data imputation.
-- [`tests/test_frontend.py`](file:///c:/Users/HP/.gemini/antigravity/scratch/CabinetSense-AI/tests/test_frontend.py): Web server asset delivery, 8 SPA view containers, CSS/JS bundling.
-
----
-
-## 10. University Jury Demonstration Script
-
-1. **Architecture Walkthrough:** Show the ESP32 circuit breadboard and explain the hardware-software decoupled REST interface.
-2. **Dashboard Tour:** Open `http://127.0.0.1:5000` to present the SCADA Cyber UI, highlighting the collapsible sidebar, live clock, and KPI cards.
-3. **Normal Simulation:** In the Simulation Lab, start Scenario 1 (*Normal Conditions*). Observe stable temperatures ($\approx 24.5^\circ\text{C}$), positive AI decision score ($+0.065$, Inlier), and nominal green badges.
-4. **Thermal Overload Anomaly:** Switch to Scenario 2 (*Gradual Temp Rise*). Watch the real-time Chart.js graph climb past $38^\circ\text{C}$ (Warning) and $52^\circ\text{C}$ (Critical). Note the AI decision score plunging below $0.0$, immediate alarm creation in the Alerts Center, and live toast notification.
-5. **Alert Acknowledgment:** Go to the Alerts Center, click **Acknowledge**, and demonstrate state transition to `ACKNOWLEDGED` with an audit event recorded.
-6. **AI Intelligence Center:** Show the live Isolation Forest decision score meter, active 6-dimensional feature vector, and discuss academic synthetic evaluation metrics.
-7. **CSV Export:** Click **Export Telemetry CSV** on the Analytics page to download the logged dataset for lab verification.
+- [`tests/test_ai.py`](file:///c:/Users/HP/.gemini/antigravity/scratch/CabinetSense-AI/tests/test_ai.py): Model serialization, feature engineering, normal prediction, anomaly sensitivity.
+- [`tests/test_frontend.py`](file:///c:/Users/HP/.gemini/antigravity/scratch/CabinetSense-AI/tests/test_frontend.py): Web server asset delivery, 4 streamlined SPA views, CSS/JS bundling.

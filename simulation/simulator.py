@@ -1,23 +1,25 @@
-﻿"""
-CabinetSense AI - Sensor Simulator Runner
-Sends realistic simulated telemetry to the CabinetSense Flask REST API.
+"""
+ThermoGuard AI - Sensor Simulator Runner
+Sends realistic simulated telemetry to the ThermoGuard Flask REST API.
 Can be run via CLI or driven asynchronously from the backend API.
 """
 
 import argparse
+import os
 import sys
 import threading
 import time
-import requests
-from datetime import datetime, timezone
 
-# Add project root to path if executed standalone
-import os
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+# Add project root to sys.path
+_PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if _PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, _PROJECT_ROOT)
 
-from simulation.scenarios import get_scenario, SCENARIOS
+import requests  # noqa: E402
+from simulation.scenarios import SCENARIOS, get_scenario  # noqa: E402
 
-class CabinetSimulator:
+
+class ThermoGuardSimulator:
     def __init__(self, server_url: str = "http://127.0.0.1:5000", interval: float = 2.0, scenario_key: str = "normal"):
         self.server_url = server_url.rstrip("/")
         self.interval = max(0.2, interval)
@@ -58,7 +60,7 @@ class CabinetSimulator:
                 "sent_count": self.sent_count,
                 "error_count": self.error_count,
                 "last_sent": self.last_sent,
-                "status_message": self.status_message
+                "status_message": self.status_message,
             }
 
     def start(self):
@@ -87,63 +89,86 @@ class CabinetSimulator:
 
             if reading.get("simulated_drop"):
                 self.status_message = "Simulated network/sensor packet drop (no transmission sent)"
-                self.last_sent = {
-                    "timestamp": reading["timestamp"],
-                    "temperature": None,
-                    "humidity": None,
-                    "status": "DROPPED"
-                }
+                self.last_sent = {"timestamp": reading["timestamp"], "temperature": None, "humidity": None, "status": "DROPPED"}
             else:
-                payload = {
-                    "temperature": reading["temperature"],
-                    "humidity": reading["humidity"],
-                    "source": "SIMULATION"
-                }
+                payload = {"temperature": reading["temperature"], "humidity": reading["humidity"], "source": "SIMULATION"}
+
+                delivered = False
+                # 1. In-process direct processing (zero network latency, bypasses loopback port/firewall issues)
                 try:
-                    resp = requests.post(endpoint, json=payload, timeout=2.5)
-                    if resp.status_code in (200, 201):
+                    from backend.services import process_telemetry_reading
+
+                    result = process_telemetry_reading(payload, client_ip="127.0.0.1")
+                    if result.get("status") != "ignored":
                         self.sent_count += 1
                         self.last_sent = {
                             "timestamp": reading["timestamp"],
                             "temperature": reading["temperature"],
                             "humidity": reading["humidity"],
                             "status": "DELIVERED",
-                            "http_code": resp.status_code,
-                            "response": resp.json()
+                            "http_code": 201,
+                            "response": result,
                         }
                         self.status_message = f"Delivered reading: {reading['temperature']}°C, {reading['humidity']}%"
+                        delivered = True
                     else:
+                        # Ignored duplicate within debounce window
+                        delivered = True
+                except (ImportError, RuntimeError, KeyError, ValueError, TypeError):
+                    delivered = False
+
+                # 2. HTTP POST fallback for standalone CLI execution or remote instances
+                if not delivered:
+                    try:
+                        resp = requests.post(endpoint, json=payload, timeout=2.5)
+                        if resp.status_code in (200, 201):
+                            self.sent_count += 1
+                            self.last_sent = {
+                                "timestamp": reading["timestamp"],
+                                "temperature": reading["temperature"],
+                                "humidity": reading["humidity"],
+                                "status": "DELIVERED",
+                                "http_code": resp.status_code,
+                                "response": resp.json(),
+                            }
+                            self.status_message = f"Delivered reading: {reading['temperature']}°C, {reading['humidity']}%"
+                        else:
+                            self.error_count += 1
+                            self.status_message = f"Server returned status {resp.status_code}"
+                    except requests.exceptions.RequestException as e:
                         self.error_count += 1
-                        self.status_message = f"Server returned status {resp.status_code}"
-                except requests.exceptions.RequestException as e:
-                    self.error_count += 1
-                    self.status_message = f"Connection error: {e.__class__.__name__}"
-                    self.last_sent = {
-                        "timestamp": reading["timestamp"],
-                        "temperature": reading["temperature"],
-                        "humidity": reading["humidity"],
-                        "status": "FAILED_CONNECTION"
-                    }
+                        self.status_message = f"Connection error: {e.__class__.__name__}"
+                        self.last_sent = {
+                            "timestamp": reading["timestamp"],
+                            "temperature": reading["temperature"],
+                            "humidity": reading["humidity"],
+                            "status": "FAILED_CONNECTION",
+                        }
 
             # Sleep remaining time
             elapsed = time.time() - start_time
             sleep_duration = max(0.05, self.interval - elapsed)
             time.sleep(sleep_duration)
 
+
+# Backward compatibility alias
+CabinetSimulator = ThermoGuardSimulator
+
 # Global singleton simulator for backend-driven operation
-simulator_instance = CabinetSimulator()
+simulator_instance = ThermoGuardSimulator()
+
 
 def main():
-    parser = argparse.ArgumentParser(description="CabinetSense AI Sensor Simulator")
+    parser = argparse.ArgumentParser(description="ThermoGuard AI Sensor Simulator")
     parser.add_argument("--scenario", choices=list(SCENARIOS.keys()), default="normal", help="Simulation scenario")
     parser.add_argument("--interval", type=float, default=2.0, help="Transmission cadence in seconds")
     parser.add_argument("--server", default="http://127.0.0.1:5000", help="Flask backend URL")
     parser.add_argument("--steps", type=int, default=10, help="Number of steps (0 for infinite)")
     args = parser.parse_args()
 
-    print(f"Starting CabinetSense AI Simulator -> {args.server}")
+    print(f"Starting ThermoGuard AI Simulator -> {args.server}")
     print(f"Scenario: {args.scenario} | Interval: {args.interval}s | Steps: {args.steps}")
-    
+
     scenario = get_scenario(args.scenario)
     step = 0
     while args.steps == 0 or step < args.steps:
@@ -155,10 +180,15 @@ def main():
             payload = {"temperature": data["temperature"], "humidity": data["humidity"], "source": "SIMULATION"}
             try:
                 resp = requests.post(f"{args.server.rstrip('/')}/api/readings", json=payload, timeout=2.0)
-                print(f"[{step}] [HTTP {resp.status_code}] Sent: {payload['temperature']}°C, {payload['humidity']}% -> Server: {resp.text}")
-            except Exception as e:
-                print(f"[{step}] [LOCAL-MODE] Generated: {payload['temperature']}°C, {payload['humidity']}% (Server unreachable: {e.__class__.__name__})")
+                print(
+                    f"[{step}] [HTTP {resp.status_code}] Sent: {payload['temperature']}°C, {payload['humidity']}% -> Server: {resp.text}"
+                )
+            except requests.exceptions.RequestException as e:
+                print(
+                    f"[{step}] [LOCAL-MODE] Generated: {payload['temperature']}°C, {payload['humidity']}% (Server unreachable: {e.__class__.__name__})"
+                )
         time.sleep(args.interval)
+
 
 if __name__ == "__main__":
     main()

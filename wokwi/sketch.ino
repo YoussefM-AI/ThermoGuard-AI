@@ -1,134 +1,126 @@
 /*
  ============================================================================
-  CabinetSense AI - Wokwi Online ESP32 & DHT Simulation Firmware
+  ThermoGuard AI - Wokwi Online ESP32 & DHT22 Simulation Firmware
  ============================================================================
-  Simulator: https://wokwi.com/
-  Hardware in Simulation:
-    - ESP32 DevKit V1
-    - DHT22 / DHT11 Sensor (connected to GPIO 4)
-    - Virtual Wi-Fi: "Wokwi-GUEST" (Free public Wokwi simulated network)
+  Circuit Configuration:
+    - Microcontroller: ESP32 DevKit V1
+    - Virtual Sensor: DHT22 connected to GPIO 4
+    - Wi-Fi Network: Wokwi-GUEST (built-in Wokwi virtual Wi-Fi)
 
-  How to test anomalies in Wokwi:
-    1. Click the "Play" button in Wokwi.
-    2. Click on the DHT sensor component during simulation.
-    3. Use the popup sliders to change Temperature and Humidity live!
+  How to Connect to your ThermoGuard AI Dashboard:
+    - If using Wokwi IoT Gateway:
+        Use: "http://10.0.2.2:5000/api/readings"
+    - If using Cloud Hosting (Render / Railway / etc.):
+        Use: "https://<your-app-domain>/api/readings"
+    - If using Tunnel (Cloudflared / Ngrok / Localtunnel):
+        Use: "https://<your-tunnel-url>/api/readings"
  ============================================================================
 */
 
+#include "DHT.h"
 #include <WiFi.h>
 #include <HTTPClient.h>
-#include "DHT.h"
-
-// -------------------------------------------------------------
-// WOKWI SIMULATION WI-FI CONFIGURATION
-// -------------------------------------------------------------
-const char* WIFI_SSID     = "Wokwi-GUEST";  // Default Wokwi Virtual Wi-Fi
-const char* WIFI_PASSWORD = "";             // No password required in Wokwi
-
-// -------------------------------------------------------------
-// FLASK BACKEND CONFIGURATION
-// -------------------------------------------------------------
-// Option 1: If using Wokwi IoT Gateway locally -> "http://10.0.2.2:5000/api/readings"
-// Option 2: If using ngrok/localtunnel -> "https://YOUR_TUNNEL_URL/api/readings"
-// Option 3: Local LAN IP (if Wokwi Gateway is running) -> "http://192.168.1.X:5000/api/readings"
-const char* SERVER_ENDPOINT = "http://10.0.2.2:5000/api/readings";
+#include <WiFiClient.h>
+#include <WiFiClientSecure.h>
 
 // Hardware Pin Configuration
-#define DHTPIN  4                                     // Digital GPIO pin connected to DHT DATA
-#define DHTTYPE DHT22                                 // Wokwi uses DHT22 / DHT11 model
-
-// Sampling Cadence (every 2.5 seconds)
-const unsigned long SAMPLING_INTERVAL_MS = 2500;
-
+#define DHTPIN 4
+#define DHTTYPE DHT22
 DHT dht(DHTPIN, DHTTYPE);
-unsigned long lastReadTime = 0;
+
+// Virtual Wi-Fi
+const char* SSID = "Wokwi-GUEST";
+const char* PASS = "";
+
+// --------------------------------------------------------------------------
+// DASHBOARD ENDPOINT CONFIGURATION
+// Update this URL with your active dashboard endpoint:
+// --------------------------------------------------------------------------
+const char* DASHBOARD_URL = "http://10.0.2.2:5000/api/readings";
 
 void setup() {
   Serial.begin(115200);
   delay(1000);
-
   Serial.println("\n========================================================");
-  Serial.println("  CabinetSense AI - WOKWI ESP32 Simulator Starting...   ");
+  Serial.println("  ThermoGuard AI - Virtual ESP32 Node Initializing...   ");
   Serial.println("========================================================");
-
-  // Initialize DHT sensor
-  Serial.printf("[SENSOR] Initializing DHT on GPIO %d...\n", DHTPIN);
+  
   dht.begin();
-
-  // Connect to Wokwi Virtual Wi-Fi
-  connectWokwiWiFi();
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(SSID, PASS);
+  
+  Serial.printf("[WIFI] Connecting to %s", SSID);
+  for (int i = 0; i < 30 && WiFi.status() != WL_CONNECTED; i++) {
+    delay(500);
+    Serial.print(".");
+  }
+  
+  if (WiFi.status() == WL_CONNECTED) {
+    Serial.println("\n[WIFI] Connected! Assigned IP: " + WiFi.localIP().toString());
+    Serial.printf("[TARGET] Streaming telemetry to: %s\n", DASHBOARD_URL);
+  } else {
+    Serial.println("\n[WIFI] Initial connection timed out - will retry in loop.");
+  }
 }
 
 void loop() {
+  delay(3000); // Read every 3 seconds
+  
   if (WiFi.status() != WL_CONNECTED) {
-    connectWokwiWiFi();
-  }
-
-  unsigned long currentMillis = millis();
-  if (currentMillis - lastReadTime >= SAMPLING_INTERVAL_MS) {
-    lastReadTime = currentMillis;
-    readAndSendTelemetry();
-  }
-}
-
-void connectWokwiWiFi() {
-  Serial.print("[WIFI] Connecting to Wokwi-GUEST...");
-  WiFi.mode(WIFI_STA);
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-
-  int attempts = 0;
-  while (WiFi.status() != WL_CONNECTED && attempts < 20) {
-    delay(500);
-    Serial.print(".");
-    attempts++;
-  }
-
-  if (WiFi.status() == WL_CONNECTED) {
-    Serial.println("\n[WIFI] Connected to Wokwi Virtual Wi-Fi!");
-    Serial.printf("[WIFI] Simulated IP: %s\n", WiFi.localIP().toString().c_str());
-  } else {
-    Serial.println("\n[WIFI] Connection retry pending...");
-  }
-}
-
-void readAndSendTelemetry() {
-  float humidity = dht.readHumidity();
-  float temperature = dht.readTemperature();
-
-  if (isnan(humidity) || isnan(temperature)) {
-    Serial.println("[SENSOR ERROR] Failed to read from simulated DHT sensor.");
+    Serial.println("[WIFI] Reconnecting to Wokwi-GUEST...");
+    WiFi.begin(SSID, PASS);
     return;
   }
 
-  Serial.println("--------------------------------------------------------");
-  Serial.printf("[WOKWI SENSOR] Temp: %.2f °C | Humidity: %.2f %%\n", temperature, humidity);
+  // Read virtual DHT22 on GPIO 4
+  float t = dht.readTemperature();
+  float h = dht.readHumidity();
 
-  // Construct JSON Payload (Tagged source="HARDWARE" so dashboard recognizes it as real device)
-  char jsonPayload[128];
-  snprintf(jsonPayload, sizeof(jsonPayload),
-    "{\"temperature\":%.2f,\"humidity\":%.2f,\"source\":\"HARDWARE\"}",
-    temperature, humidity
-  );
-
-  // Send HTTP POST to Flask Backend
-  if (WiFi.status() == WL_CONNECTED) {
-    HTTPClient http;
-    http.begin(SERVER_ENDPOINT);
-    http.addHeader("Content-Type", "application/json");
-    http.setTimeout(3000);
-
-    Serial.printf("[HTTP POST] Sending payload to: %s\n", SERVER_ENDPOINT);
-    Serial.printf("            Payload: %s\n", jsonPayload);
-
-    int httpCode = http.POST((uint8_t*)jsonPayload, strlen(jsonPayload));
-
-    if (httpCode > 0) {
-      String response = http.getString();
-      Serial.printf("[HTTP SUCCESS] Code: %d -> Server Response: %s\n", httpCode, response.c_str());
-    } else {
-      Serial.printf("[HTTP NOTE] POST attempt (code %d: %s)\n", httpCode, http.errorToString(httpCode).c_str());
-      Serial.println("            Tip: To route Wokwi to localhost:5000, use ngrok or Wokwi IoT Gateway.");
-    }
-    http.end();
+  if (isnan(t) || isnan(h)) {
+    Serial.println("[SENSOR ERROR] Failed to read from virtual DHT22 on GPIO 4!");
+    return;
   }
+
+  Serial.printf("\n[DHT22] Reading: Temp = %.1f C | Hum = %.1f %%\n", t, h);
+
+  // Dispatch HTTP POST to ThermoGuard AI Dashboard
+  HTTPClient http;
+  String targetUrl = String(DASHBOARD_URL);
+  bool isHttps = targetUrl.startsWith("https://");
+
+  bool beginSuccess = false;
+  WiFiClient standardClient;
+  WiFiClientSecure secureClient;
+
+  if (isHttps) {
+    secureClient.setInsecure(); // Accept all certificates for simulation/dev tunnels
+    beginSuccess = http.begin(secureClient, targetUrl);
+  } else {
+    beginSuccess = http.begin(standardClient, targetUrl);
+  }
+
+  if (!beginSuccess) {
+    Serial.println("    [HTTP ERROR] Unable to parse or connect to target URL.");
+    return;
+  }
+
+  http.addHeader("Content-Type", "application/json");
+  http.setTimeout(4000);
+
+  // JSON payload tagged as source="HARDWARE"
+  char payload[128];
+  snprintf(payload, sizeof(payload), "{\"temperature\":%.2f,\"humidity\":%.2f,\"source\":\"HARDWARE\"}", t, h);
+
+  int httpCode = http.POST((uint8_t*)payload, strlen(payload));
+
+  if (httpCode == 200 || httpCode == 201) {
+    Serial.printf("    [SUCCESS %d] Telemetry delivered to ThermoGuard AI Dashboard!\n", httpCode);
+  } else if (httpCode > 0) {
+    Serial.printf("    [SERVER RESPONSE %d] Server replied: %s\n", httpCode, http.getString().c_str());
+  } else {
+    Serial.printf("    [NETWORK ERROR %d] %s\n", httpCode, http.errorToString(httpCode).c_str());
+    Serial.println("    -> Ensure backend is running and DASHBOARD_URL is reachable.");
+  }
+
+  http.end();
 }

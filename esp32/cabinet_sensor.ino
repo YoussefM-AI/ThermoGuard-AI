@@ -1,6 +1,6 @@
 /*
  ============================================================================
-  CabinetSense AI - ESP32 & DHT11 Industrial Cabinet Telemetry Firmware
+  ThermoGuard AI - ESP32 & DHT11 Industrial Cabinet Telemetry Firmware
  ============================================================================
   Hardware Requirements:
     - ESP32 Development Board (e.g. ESP32-WROOM-32)
@@ -26,6 +26,8 @@
 
 #include <WiFi.h>
 #include <HTTPClient.h>
+#include <WiFiClient.h>
+#include <WiFiClientSecure.h>
 #include "DHT.h"
 
 // -------------------------------------------------------------
@@ -34,16 +36,26 @@
 const char* WIFI_SSID     = "YOUR_WIFI_SSID";         // Enter your Wi-Fi SSID
 const char* WIFI_PASSWORD = "YOUR_WIFI_PASSWORD";     // Enter your Wi-Fi Password
 
-// Flask Server Configuration (IP address of the machine running backend/app.py)
-const char* SERVER_IP     = "192.168.1.100";          // e.g. "192.168.1.50"
-const int   SERVER_PORT   = 5000;                     // Default Flask port
+// -------------------------------------------------------------
+// HYBRID IOT CLOUD / LOCAL CONFIGURATION
+// -------------------------------------------------------------
+// Set to true to transmit directly to cloud (PC can be turned off)
+// Set to false to transmit to your local machine on LAN
+const bool  USE_CLOUD_ENDPOINT = false;
+
+// Mode A: Local PC / LAN Development (when backend runs on your machine)
+const char* LOCAL_SERVER_IP    = "192.168.1.100";     // e.g. "192.168.1.50"
+const int   LOCAL_SERVER_PORT  = 5000;
+
+// Mode B: Standalone Cloud AI Hosting (Render, Railway, Fly.io, etc.)
+const char* CLOUD_SERVER_URL   = "https://your-thermoguard-ai.onrender.com/api/readings";
 
 // Hardware Pin Configuration
 #define DHTPIN  4                                     // Digital GPIO pin connected to DHT11 DATA
-#define DHTTYPE DHT11                                 // Sensor model DHT11
+#define DHTTYPE DHT11                                 // Physical sensor model: DHT11
 
-// Sampling Cadence (DHT11 requires >= 1.5 - 2.0 seconds between reads)
-const unsigned long SAMPLING_INTERVAL_MS = 2500;
+// Sampling Cadence: Read temperature and humidity every 3 seconds
+const unsigned long SAMPLING_INTERVAL_MS = 3000;
 
 // -------------------------------------------------------------
 // GLOBAL INSTANCES & STATE
@@ -57,7 +69,7 @@ void setup() {
   delay(1000);
   
   Serial.println("\n========================================================");
-  Serial.println("  CabinetSense AI - ESP32 Industrial Node Starting...   ");
+  Serial.println("  ThermoGuard AI - ESP32 Industrial Node Starting...    ");
   Serial.println("========================================================");
   
   // Initialize DHT11 sensor
@@ -101,6 +113,11 @@ void connectWiFi() {
   if (WiFi.status() == WL_CONNECTED) {
     Serial.println("\n[WIFI] Connected successfully!");
     Serial.printf("[WIFI] IP Address: %s | RSSI: %d dBm\n", WiFi.localIP().toString().c_str(), WiFi.RSSI());
+    if (USE_CLOUD_ENDPOINT) {
+      Serial.printf("[MODE] Cloud AI Mode -> Target: %s\n", CLOUD_SERVER_URL);
+    } else {
+      Serial.printf("[MODE] Local Mode -> Target: http://%s:%d/api/readings\n", LOCAL_SERVER_IP, LOCAL_SERVER_PORT);
+    }
   } else {
     Serial.println("\n[WIFI] Connection failed. Will retry on next sampling cycle.");
   }
@@ -136,9 +153,24 @@ void readAndTransmitTelemetry() {
     return;
   }
 
-  // Construct REST API Endpoint URL
-  char serverEndpoint[128];
-  snprintf(serverEndpoint, sizeof(serverEndpoint), "http://%s:%d/api/readings", SERVER_IP, SERVER_PORT);
+  HTTPClient http;
+  bool beginSuccess = false;
+  WiFiClient standardClient;
+  WiFiClientSecure secureClient;
+
+  if (USE_CLOUD_ENDPOINT) {
+    secureClient.setInsecure(); // Accept SSL certs for cloud instance
+    beginSuccess = http.begin(secureClient, CLOUD_SERVER_URL);
+  } else {
+    char serverEndpoint[128];
+    snprintf(serverEndpoint, sizeof(serverEndpoint), "http://%s:%d/api/readings", LOCAL_SERVER_IP, LOCAL_SERVER_PORT);
+    beginSuccess = http.begin(standardClient, serverEndpoint);
+  }
+
+  if (!beginSuccess) {
+    Serial.println("[HTTP ERROR] Failed to initialize connection to server endpoint.");
+    return;
+  }
 
   // Construct JSON Payload (Tagged source="HARDWARE")
   char jsonPayload[128];
@@ -147,20 +179,18 @@ void readAndTransmitTelemetry() {
     temperature, humidity
   );
 
-  // Dispatch HTTP POST
-  HTTPClient http;
-  http.begin(serverEndpoint);
   http.addHeader("Content-Type", "application/json");
-  http.setTimeout(3000); // 3 second timeout
+  http.setTimeout(4000); // 4 second timeout
 
   int httpResponseCode = http.POST((uint8_t*)jsonPayload, strlen(jsonPayload));
 
-  if (httpResponseCode > 0) {
+  if (httpResponseCode == 200 || httpResponseCode == 201) {
     String responseBody = http.getString();
-    Serial.printf("[HTTP POST] Code: %d -> Server Response: %s\n", httpResponseCode, responseBody.c_str());
+    Serial.printf("[HTTP SUCCESS %d] Telemetry delivered to ThermoGuard AI -> Response: %s\n", httpResponseCode, responseBody.c_str());
+  } else if (httpResponseCode > 0) {
+    Serial.printf("[HTTP POST %d] Server replied: %s\n", httpResponseCode, http.getString().c_str());
   } else {
     Serial.printf("[HTTP ERROR] POST failed, error code: %d (%s)\n", httpResponseCode, http.errorToString(httpResponseCode).c_str());
-    Serial.printf("             Verify Flask server is running at %s\n", serverEndpoint);
   }
 
   http.end();

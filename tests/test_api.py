@@ -1,17 +1,20 @@
 """
-CabinetSense AI - REST API Endpoint Test Suite
+ThermoGuard AI - REST API Endpoint Test Suite
 Tests all endpoints using Flask's test client on an isolated database.
 """
 
 import os
-import unittest
+import sys
 import tempfile
-import json
+import unittest
+
+# Ensure project root is available in sys.path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from backend.app import create_app
-from backend.database import init_db
 
-class TestCabinetSenseAPI(unittest.TestCase):
+
+class TestThermoGuardAPI(unittest.TestCase):
     def setUp(self):
         self.temp_db_fd, self.temp_db_path = tempfile.mkstemp(suffix=".db")
         self.app = create_app(test_config={"TESTING": True, "DATABASE": self.temp_db_path})
@@ -22,7 +25,7 @@ class TestCabinetSenseAPI(unittest.TestCase):
         try:
             if os.path.exists(self.temp_db_path):
                 os.remove(self.temp_db_path)
-        except Exception:
+        except OSError:
             pass
 
     def test_health_endpoint(self):
@@ -33,11 +36,7 @@ class TestCabinetSenseAPI(unittest.TestCase):
         self.assertEqual(data["database"], "connected")
 
     def test_post_reading_valid(self):
-        payload = {
-            "temperature": 25.5,
-            "humidity": 45.2,
-            "source": "SIMULATION"
-        }
+        payload = {"temperature": 25.5, "humidity": 45.2, "source": "SIMULATION"}
         resp = self.client.post("/api/readings", json=payload)
         self.assertEqual(resp.status_code, 201)
         data = resp.get_json()
@@ -120,7 +119,7 @@ class TestCabinetSenseAPI(unittest.TestCase):
     def test_analytics_and_export(self):
         # Insert a reading
         self.client.post("/api/readings", json={"temperature": 25.0, "humidity": 45.0, "source": "SIMULATION"})
-        
+
         # Analytics
         resp = self.client.get("/api/analytics")
         self.assertEqual(resp.status_code, 200)
@@ -133,6 +132,7 @@ class TestCabinetSenseAPI(unittest.TestCase):
         self.assertEqual(resp_csv.status_code, 200)
         self.assertEqual(resp_csv.mimetype, "text/csv")
         self.assertIn(b"Temperature", resp_csv.data)
+
 
 if __name__ == "__main__":
     unittest.main()

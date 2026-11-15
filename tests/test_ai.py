@@ -1,19 +1,29 @@
 """
-CabinetSense AI - AI Unit and Integration Test Suite
+ThermoGuard AI - AI Unit and Integration Test Suite
 Validates model artifact loading, feature engineering, normal prediction,
 anomaly sensitivity, and safe handling of missing/corrupted data.
 """
 
 import os
+import sys
 import unittest
+
+# Ensure project root is available in sys.path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
 import numpy as np
 import pandas as pd
 
-from ai.predict import predict_anomaly, load_trained_model, get_model_info, MODEL_PATH
-from ai.preprocessing import compute_engineered_features, extract_feature_matrix, FEATURE_NAMES
+from ai.predict import MODEL_PATH, get_model_info, load_trained_model, predict_anomaly
+from ai.preprocessing import (
+    FEATURE_NAMES,
+    compute_engineered_features,
+    extract_feature_matrix,
+)
 from ai.train_model import train_isolation_forest
 
-class TestCabinetSenseAI(unittest.TestCase):
+
+class TestThermoGuardAI(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         # Ensure model is trained and available
@@ -30,14 +40,11 @@ class TestCabinetSenseAI(unittest.TestCase):
         self.assertEqual(len(info["features"]), 6)
 
     def test_feature_engineering_pipeline(self):
-        sample_df = pd.DataFrame({
-            "temperature": [24.0, 24.2, 24.5, 25.0, 26.0],
-            "humidity": [45.0, 44.8, 45.2, 45.0, 44.5]
-        })
+        sample_df = pd.DataFrame({"temperature": [24.0, 24.2, 24.5, 25.0, 26.0], "humidity": [45.0, 44.8, 45.2, 45.0, 44.5]})
         feat_df = compute_engineered_features(sample_df, window_size=3)
         for col in FEATURE_NAMES:
             self.assertIn(col, feat_df.columns)
-        
+
         # Verify delta calculation
         self.assertAlmostEqual(feat_df["delta_temperature"].iloc[1], 0.2)
         # Verify rolling avg
@@ -49,10 +56,7 @@ class TestCabinetSenseAI(unittest.TestCase):
         self.assertEqual(names, FEATURE_NAMES)
 
     def test_missing_and_corrupt_data_handling(self):
-        corrupt_df = pd.DataFrame({
-            "temperature": [24.0, None, np.nan, 25.0],
-            "humidity": [45.0, np.nan, 46.0, None]
-        })
+        corrupt_df = pd.DataFrame({"temperature": [24.0, None, np.nan, 25.0], "humidity": [45.0, np.nan, 46.0, None]})
         clean_df = compute_engineered_features(corrupt_df)
         self.assertEqual(clean_df.isna().sum().sum(), 0)
 
@@ -61,7 +65,7 @@ class TestCabinetSenseAI(unittest.TestCase):
         vec = np.array([[24.5, 45.0, 0.0, 0.0, 24.5, 45.0]])
         result = predict_anomaly(vec)
         self.assertEqual(result["is_anomaly"], 0)
-        self.assertGreater(result["anomaly_score"], 0.0) # Inlier score > 0
+        self.assertGreater(result["anomaly_score"], 0.0)  # Inlier score > 0
         self.assertIn("operational profile", result["explanation"].lower())
 
     def test_severe_thermal_anomaly_prediction(self):
@@ -69,7 +73,7 @@ class TestCabinetSenseAI(unittest.TestCase):
         vec = np.array([[58.5, 30.0, 6.0, -5.0, 52.0, 33.0]])
         result = predict_anomaly(vec)
         self.assertEqual(result["is_anomaly"], 1)
-        self.assertLess(result["anomaly_score"], 0.0) # Outlier score < 0
+        self.assertLess(result["anomaly_score"], 0.0)  # Outlier score < 0
         self.assertIn("elevated", result["explanation"].lower())
 
     def test_severe_humidity_anomaly_prediction(self):
@@ -79,6 +83,7 @@ class TestCabinetSenseAI(unittest.TestCase):
         self.assertEqual(result["is_anomaly"], 1)
         self.assertLess(result["anomaly_score"], 0.0)
         self.assertIn("moisture", result["explanation"].lower())
+
 
 if __name__ == "__main__":
     unittest.main()

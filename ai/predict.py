@@ -1,19 +1,21 @@
 """
-CabinetSense AI - Anomaly Prediction Engine
+ThermoGuard AI - Anomaly Prediction Engine
 Loads the serialized Isolation Forest model and evaluates live telemetry.
 Provides robust fallbacks when model is not yet trained.
 """
 
 import os
+from typing import Any
+
 import joblib
 import numpy as np
-from typing import Dict, Any, Optional
 
 MODEL_PATH = os.path.join(os.path.dirname(__file__), "model.pkl")
 
 # Cached model holder
 _cached_model = None
 _cached_mtime = 0.0
+
 
 def load_trained_model():
     """
@@ -30,14 +32,12 @@ def load_trained_model():
             _cached_model = joblib.load(MODEL_PATH)
             _cached_mtime = current_mtime
         return _cached_model
-    except Exception as e:
+    except (OSError, ValueError, KeyError, EOFError, AttributeError) as e:
         print(f"[AI-PREDICT] Error loading model.pkl: {e}")
         return None
 
-def predict_anomaly(
-    feature_vector: np.ndarray,
-    metadata: Optional[Dict[str, float]] = None
-) -> Dict[str, Any]:
+
+def predict_anomaly(feature_vector: np.ndarray, metadata: dict[str, float] | None = None) -> dict[str, Any]:
     """
     Evaluates incoming feature vector [temperature, humidity, delta_t, delta_h, roll_t, roll_h].
     Returns:
@@ -74,14 +74,13 @@ def predict_anomaly(
         explanation = "; ".join(reasons) if reasons else "Environmental parameters within standard operating baseline."
         score = -0.5 if is_anomaly else 0.5
 
-        return {
-            "is_anomaly": is_anomaly,
-            "anomaly_score": score,
-            "explanation": explanation,
-            "model_status": "baseline_fallback"
-        }
+        return {"is_anomaly": is_anomaly, "anomaly_score": score, "explanation": explanation, "model_status": "baseline_fallback"}
 
-    # Model is loaded from disk
+    # Model is loaded from disk — ensure feature_vector is 2-D float64
+    feature_vector = np.array(feature_vector, dtype=np.float64)
+    if feature_vector.ndim == 1:
+        feature_vector = feature_vector.reshape(1, -1)
+
     model = model_bundle["model"] if isinstance(model_bundle, dict) else model_bundle
     scaler = model_bundle.get("scaler") if isinstance(model_bundle, dict) else None
 
@@ -113,14 +112,10 @@ def predict_anomaly(
     else:
         explanation = "Environmental conditions align with learned normal operational profile."
 
-    return {
-        "is_anomaly": is_anomaly,
-        "anomaly_score": round(raw_score, 4),
-        "explanation": explanation,
-        "model_status": "trained"
-    }
+    return {"is_anomaly": is_anomaly, "anomaly_score": round(raw_score, 4), "explanation": explanation, "model_status": "trained"}
 
-def get_model_info() -> Dict[str, Any]:
+
+def get_model_info() -> dict[str, Any]:
     """
     Returns AI model metadata and status.
     """
@@ -131,7 +126,7 @@ def get_model_info() -> Dict[str, Any]:
             "model_name": "Isolation Forest",
             "status": "NOT_TRAINED",
             "message": "Model artifact not found. Execute training pipeline to build model.pkl.",
-            "features": ["temperature", "humidity", "delta_temperature", "delta_humidity", "rolling_temp_avg", "rolling_hum_avg"]
+            "features": ["temperature", "humidity", "delta_temperature", "delta_humidity", "rolling_temp_avg", "rolling_hum_avg"],
         }
 
     meta = model_bundle.get("metadata", {}) if isinstance(model_bundle, dict) else {}
@@ -143,5 +138,7 @@ def get_model_info() -> Dict[str, Any]:
         "training_samples": meta.get("training_samples"),
         "contamination": meta.get("contamination", 0.05),
         "n_estimators": meta.get("n_estimators", 100),
-        "features": meta.get("features", ["temperature", "humidity", "delta_temperature", "delta_humidity", "rolling_temp_avg", "rolling_hum_avg"])
+        "features": meta.get(
+            "features", ["temperature", "humidity", "delta_temperature", "delta_humidity", "rolling_temp_avg", "rolling_hum_avg"]
+        ),
     }

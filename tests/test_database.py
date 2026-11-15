@@ -1,25 +1,29 @@
 """
-CabinetSense AI - Database Unit Test Suite
+ThermoGuard AI - Database Unit Test Suite
 Validates schema creation, CRUD operations, indexing, and deduplication logic.
 """
 
 import os
-import unittest
+import sys
 import tempfile
+import unittest
+
+# Ensure project root is available in sys.path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
 from backend.database import (
-    init_db,
-    insert_reading,
-    get_readings,
-    get_latest_reading,
-    insert_alert,
-    get_alerts,
     acknowledge_alert,
-    insert_system_event,
-    get_system_events,
-    get_analytics_summary
+    get_alerts,
+    get_analytics_summary,
+    get_latest_reading,
+    get_readings,
+    init_db,
+    insert_alert,
+    insert_reading,
 )
 
-class TestCabinetDatabase(unittest.TestCase):
+
+class TestThermoGuardDatabase(unittest.TestCase):
     def setUp(self):
         # Create an isolated temporary database for each test
         self.temp_db_fd, self.temp_db_path = tempfile.mkstemp(suffix=".db")
@@ -32,12 +36,7 @@ class TestCabinetDatabase(unittest.TestCase):
 
     def test_insert_and_retrieve_reading(self):
         result = insert_reading(
-            temperature=25.4,
-            humidity=46.2,
-            source="HARDWARE",
-            is_anomaly=0,
-            anomaly_score=0.12,
-            db_path=self.temp_db_path
+            temperature=25.4, humidity=46.2, source="HARDWARE", is_anomaly=0, anomaly_score=0.12, db_path=self.temp_db_path
         )
         self.assertIn("id", result)
         self.assertEqual(result["temperature"], 25.4)
@@ -70,7 +69,7 @@ class TestCabinetDatabase(unittest.TestCase):
             temperature=58.0,
             humidity=42.0,
             anomaly_score=-0.45,
-            db_path=self.temp_db_path
+            db_path=self.temp_db_path,
         )
         self.assertIn("id", alert)
         self.assertEqual(alert["severity"], "CRITICAL")
@@ -104,6 +103,7 @@ class TestCabinetDatabase(unittest.TestCase):
         self.assertAlmostEqual(summary["temperature"]["avg"], 30.0)
         self.assertEqual(summary["sources"]["hardware"], 1)
         self.assertEqual(summary["sources"]["simulation"], 2)
+
 
 if __name__ == "__main__":
     unittest.main()
