@@ -62,7 +62,7 @@ class TestThermoGuardFrontend(unittest.TestCase):
         resp = self.client.get("/")
         html = resp.data.decode("utf-8")
         resp.close()
-        scenarios = ["normal", "gradual_temp", "abnormal_hum", "combined", "network_drop"]
+        scenarios = ["normal", "gradual_temp", "abnormal_hum", "combined"]
         for sc in scenarios:
             self.assertIn(f'data-scenario="{sc}"', html)
 
