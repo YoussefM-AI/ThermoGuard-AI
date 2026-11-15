@@ -101,9 +101,26 @@ def _send_via_resend(subject: str, html: str) -> tuple[bool, str]:
             if resp.status in (200, 201):
                 return True, ""
             body = resp.read().decode("utf-8", errors="replace")
-            return False, f"Resend API returned {resp.status}: {body}"
+            return False, f"Resend API {resp.status}: {body}"
     except URLError as e:
-        return False, f"Network error reaching Resend API: {e}"
+        # HTTPError (subclass of URLError) carries the response body with the real reason
+        if hasattr(e, "read"):
+            try:
+                body = e.read().decode("utf-8", errors="replace")
+                code = getattr(e, "code", "?")
+                if code == 403:
+                    return False, (
+                        f"Resend 403 Forbidden — {body}. "
+                        "Most likely causes: (1) invalid API key, or "
+                        "(2) on Resend free plan you must send TO the same email you signed up with. "
+                        "Fix: set ALERT_EMAIL_TO to your Resend account email, or verify your domain at resend.com/domains"
+                    )
+                if code == 422:
+                    return False, f"Resend 422 Unprocessable — check ALERT_EMAIL_TO format: {body}"
+                return False, f"Resend HTTP {code}: {body}"
+            except Exception:
+                pass
+        return False, f"Network/HTTP error: {e}"
     except Exception as e:
         return False, f"Unexpected error: {e}"
 
