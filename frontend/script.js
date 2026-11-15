@@ -527,7 +527,6 @@ class ThermoGuardApp {
     if (alertWarnEl) alertWarnEl.textContent = alerts.warning || 0;
     if (alertUnresEl) alertUnresEl.textContent = alerts.unresolved || 0;
   }
-  }
 
   renderSystemOffline() {
     const beaconEl = document.getElementById("hero-beacon");
