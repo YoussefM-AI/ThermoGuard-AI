@@ -6,6 +6,7 @@ simulation control, and CSV export.
 
 import csv
 import io
+import os
 import sqlite3
 from datetime import UTC, datetime
 
@@ -29,6 +30,21 @@ from backend.services import (
 from simulation.simulator import simulator_instance
 
 api_bp = Blueprint("api", __name__, url_prefix="/api")
+
+# -------------------------------------------------------------
+# API KEY GUARD — Feature 3
+# Set THERMOGUARD_API_KEY in Render env vars to protect the
+# telemetry ingestion endpoint. Leave unset = open access (dev).
+# -------------------------------------------------------------
+_API_KEY = os.getenv("THERMOGUARD_API_KEY", "")
+
+
+def _check_api_key() -> bool:
+    """Returns True if API key is not configured OR the request presents the correct key."""
+    if not _API_KEY:
+        return True  # Key protection disabled — open access
+    provided = request.headers.get("X-API-Key", "")
+    return provided == _API_KEY
 
 # -------------------------------------------------------------
 # 1. HEALTH & SYSTEM STATUS
@@ -100,7 +116,11 @@ def post_reading():
     """
     Ingests sensor telemetry from ESP32 hardware or Python simulator.
     Validates payload, evaluates AI anomaly detection, triggers alerts, and stores in SQLite.
+    Protected by X-API-Key header when THERMOGUARD_API_KEY env var is set.
     """
+    if not _check_api_key():
+        return jsonify({"error": "Unauthorized", "details": "Missing or invalid X-API-Key header"}), 401
+
     if not request.is_json:
         return jsonify({"error": "Content-Type must be application/json"}), 415
 

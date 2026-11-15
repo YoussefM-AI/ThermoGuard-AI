@@ -203,6 +203,20 @@ class ThermoGuardApp {
             pointBackgroundColor: "#818CF8",
             yAxisID: "yHum",
           },
+          {
+            // Anomaly overlay — red dots plotted on the temp axis at anomaly positions
+            label: "Anomaly",
+            data: [],
+            borderColor: "transparent",
+            backgroundColor: "transparent",
+            pointRadius: 7,
+            pointHoverRadius: 9,
+            pointBackgroundColor: "#F43F5E",
+            pointBorderColor: "#FFFFFF",
+            pointBorderWidth: 1.5,
+            showLine: false,
+            yAxisID: "yTemp",
+          },
         ],
       },
       options: {
@@ -263,10 +277,13 @@ class ThermoGuardApp {
 
     const temps = slice.map((r) => r.temperature);
     const hums = slice.map((r) => r.humidity);
+    // Red dot at the temperature value for anomalies, null (hidden) for normal readings
+    const anomalyDots = slice.map((r) => (r.is_anomaly ? r.temperature : null));
 
     this.historyChart.data.labels = labels;
     this.historyChart.data.datasets[0].data = temps;
     this.historyChart.data.datasets[1].data = hums;
+    this.historyChart.data.datasets[2].data = anomalyDots;
     this.historyChart.update("none");
   }
 

@@ -266,6 +266,18 @@ def evaluate_and_create_alerts(
         alert_record = insert_alert(
             severity=severity, message=message, temperature=temp, humidity=hum, anomaly_score=anomaly_score, db_path=db_path
         )
+        # Dispatch Telegram / external notification (non-blocking, best-effort)
+        try:
+            from backend.notifications import dispatch_alert
+            dispatch_alert(
+                severity=severity,
+                message=message,
+                temperature=temp,
+                humidity=hum,
+                anomaly_score=anomaly_score,
+            )
+        except Exception:
+            pass
         return alert_record
 
     return None

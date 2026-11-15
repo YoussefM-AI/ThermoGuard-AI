@@ -87,6 +87,23 @@ def create_app(test_config=None) -> Flask:
     except Exception:
         pass
 
+    # Auto-start simulation if configured (useful for cloud deployments without hardware)
+    if os.getenv("AUTO_START_SIMULATION", "false").lower() in ("true", "1", "yes"):
+        try:
+            from simulation.simulator import simulator_instance
+            scenario = os.getenv("AUTO_SIM_SCENARIO", "normal")
+            simulator_instance.set_scenario(scenario)
+            simulator_instance.set_interval(float(os.getenv("AUTO_SIM_INTERVAL", "3.0")))
+            simulator_instance.start()
+            insert_system_event(
+                event_type="SIMULATION_AUTOSTART",
+                description=f"Auto-started simulation (scenario={scenario}) on boot",
+                source="SYSTEM",
+                db_path=db_path,
+            )
+        except Exception:
+            pass
+
     return app
 
 
