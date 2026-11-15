@@ -830,6 +830,27 @@ class ThermoGuardApp {
     }
   }
 
+  async acknowledgeAllAlerts() {
+    try {
+      const res = await fetch(`${this.apiBase}/alerts/acknowledge-all`, { method: "POST" });
+      if (res.ok) {
+        const data = await res.json();
+        const count = data.count || 0;
+        if (count > 0) {
+          this.showToast(`Acknowledged ${count} alerts`, "success");
+        } else {
+          this.showToast("No unresolved alerts to acknowledge", "info");
+        }
+        this.fetchAlerts();
+        this.fetchSystemStatus();
+      } else {
+        this.showToast("Failed to acknowledge all alerts", "error");
+      }
+    } catch (err) {
+      this.showToast("Network error acknowledging alerts", "error");
+    }
+  }
+
   // -------------------------------------------------------------
   // 6. SIMULATION CONTROLS & HELPERS
   // -------------------------------------------------------------

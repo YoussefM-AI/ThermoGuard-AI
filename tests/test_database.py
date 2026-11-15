@@ -13,6 +13,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 
 from backend.database import (
     acknowledge_alert,
+    acknowledge_all_alerts,
     get_alerts,
     get_analytics_summary,
     get_24h_summary,
@@ -89,6 +90,14 @@ class TestThermoGuardDatabase(unittest.TestCase):
         self.assertEqual(len(unresolved), 0)
         ack = get_alerts(status="ACKNOWLEDGED", db_path=self.temp_db_path)
         self.assertEqual(len(ack), 1)
+
+        # Test bulk acknowledge
+        insert_alert("WARNING", "Warn 1", db_path=self.temp_db_path)
+        insert_alert("CRITICAL", "Crit 2", db_path=self.temp_db_path)
+        bulk_count = acknowledge_all_alerts(db_path=self.temp_db_path)
+        self.assertEqual(bulk_count, 2)
+        remaining = get_alerts(status="UNRESOLVED", db_path=self.temp_db_path)
+        self.assertEqual(len(remaining), 0)
 
     def test_analytics_calculation(self):
         # Insert 3 readings: 2 normal, 1 anomaly

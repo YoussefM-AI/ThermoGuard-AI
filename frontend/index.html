@@ -340,7 +340,12 @@
                     <p>Latest active alarms and threshold breaches</p>
                   </div>
                 </div>
-                <a href="#alerts" class="btn btn-sm btn-ghost" onclick="app.navigate('alerts')">View All</a>
+                <div class="panel-actions-group" style="display:flex;gap:8px;">
+                  <button class="btn btn-sm btn-outline" onclick="app.acknowledgeAllAlerts()" title="Acknowledge all unresolved alerts">
+                    <i data-lucide="check-check"></i> Ack All
+                  </button>
+                  <a href="#alerts" class="btn btn-sm btn-ghost" onclick="app.navigate('alerts')">View All</a>
+                </div>
               </div>
               <div class="panel-body no-padding">
                 <div class="table-responsive">
@@ -502,6 +507,9 @@
                   <button class="tab-btn" data-filter="CRITICAL" onclick="app.setAlertFilter('CRITICAL')">Critical</button>
                   <button class="tab-btn" data-filter="WARNING" onclick="app.setAlertFilter('WARNING')">Warning</button>
                 </div>
+                <button class="btn btn-outline" id="btn-ack-all-alerts" onclick="app.acknowledgeAllAlerts()">
+                  <i data-lucide="check-check"></i> Acknowledge All
+                </button>
                 <button class="btn btn-ghost" onclick="app.fetchAlerts()">
                   <i data-lucide="refresh-cw"></i> Refresh
                 </button>
@@ -711,6 +719,6 @@
   </div>
 
   <div class="toast-container" id="toast-container"></div>
-  <script src="script.js?v=4"></script>
+  <script src="script.js?v=5"></script>
 </body>
 </html>

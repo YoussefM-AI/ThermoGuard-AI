@@ -398,6 +398,29 @@ def acknowledge_alert(alert_id: int, db_path: str | None = None) -> bool:
     return updated
 
 
+def acknowledge_all_alerts(db_path: str | None = None) -> int:
+    """
+    Acknowledge all UNRESOLVED alerts in the database.
+    Returns the count of alerts updated.
+    """
+    conn = get_db_connection(db_path)
+    cur = conn.cursor()
+    cur.execute("UPDATE alerts SET status = 'ACKNOWLEDGED' WHERE status = 'UNRESOLVED'")
+    count = cur.rowcount
+    if count > 0:
+        ts = datetime.now(UTC).isoformat()
+        cur.execute(
+            """
+            INSERT INTO system_events (timestamp, event_type, description, source)
+            VALUES (?, 'ALERTS_BULK_ACKNOWLEDGED', ?, 'USER')
+        """,
+            (ts, f"Bulk acknowledged {count} unresolved alerts"),
+        )
+    conn.commit()
+    conn.close()
+    return count
+
+
 # -------------------------------------------------------------
 # SYSTEM EVENTS & ANALYTICS
 # -------------------------------------------------------------

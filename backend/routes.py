@@ -15,6 +15,7 @@ from flask import Blueprint, Response, jsonify, request
 from ai.predict import get_model_info
 from backend.database import (
     acknowledge_alert,
+    acknowledge_all_alerts,
     get_alerts,
     get_analytics_summary,
     get_24h_summary,
@@ -198,6 +199,17 @@ def acknowledge_alert_endpoint(alert_id: int):
     if not updated:
         return jsonify({"error": f"Alert #{alert_id} not found"}), 404
     return jsonify({"status": "success", "message": f"Alert #{alert_id} acknowledged successfully", "alert_id": alert_id}), 200
+
+
+@api_bp.route("/alerts/acknowledge-all", methods=["POST"])
+def acknowledge_all_alerts_endpoint():
+    """Marks all unresolved alerts as acknowledged by user."""
+    count = acknowledge_all_alerts()
+    return jsonify({
+        "status": "success",
+        "message": f"{count} alerts acknowledged successfully",
+        "count": count,
+    }), 200
 
 
 # -------------------------------------------------------------

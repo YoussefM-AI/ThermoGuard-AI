@@ -99,6 +99,11 @@ class TestThermoGuardAPI(unittest.TestCase):
         resp_ack = self.client.post(f"/api/alerts/{alert_id}/acknowledge")
         self.assertEqual(resp_ack.status_code, 200)
 
+        # Test bulk acknowledge-all endpoint
+        resp_bulk = self.client.post("/api/alerts/acknowledge-all")
+        self.assertEqual(resp_bulk.status_code, 200)
+        self.assertIn("count", resp_bulk.get_json())
+
     def test_simulation_controls(self):
         # Start
         start_resp = self.client.post("/api/simulation/start", json={"scenario": "normal", "interval": 1.0})
