@@ -26,9 +26,15 @@ from urllib.error import URLError
 from urllib.request import Request, urlopen
 
 # ── Config ────────────────────────────────────────────────────────────────────
-_API_KEY  = os.getenv("RESEND_API_KEY", "")
-_TO       = os.getenv("ALERT_EMAIL_TO", "")
-_FROM     = os.getenv("ALERT_EMAIL_FROM", "ThermoGuard AI <onboarding@resend.dev>")
+def _get_api_key() -> str:
+    return os.getenv("RESEND_API_KEY", "").strip().strip("\"'")
+
+def _get_to_email() -> str:
+    return os.getenv("ALERT_EMAIL_TO", "").strip().strip("\"'")
+
+def _get_from_email() -> str:
+    val = os.getenv("ALERT_EMAIL_FROM", "").strip().strip("\"'")
+    return val if val else "onboarding@resend.dev"
 
 _RESEND_URL = "https://api.resend.com/emails"
 
@@ -37,7 +43,7 @@ _NOTIFY_SEVERITIES = {"CRITICAL"}
 
 
 def _is_configured() -> bool:
-    return bool(_API_KEY and _TO)
+    return bool(_get_api_key() and _get_to_email())
 
 
 def _build_html(severity: str, message: str, temperature: float | None, humidity: float | None, anomaly_score: float | None) -> tuple[str, str]:
@@ -80,9 +86,13 @@ def _send_via_resend(subject: str, html: str) -> tuple[bool, str]:
     POSTs to Resend API over HTTPS (port 443 — always open on Render).
     Returns (success, error_detail).
     """
+    api_key = _get_api_key()
+    to_email = _get_to_email()
+    from_email = _get_from_email()
+
     payload = json.dumps({
-        "from": _FROM,
-        "to": [_TO],
+        "from": from_email,
+        "to": [to_email],
         "subject": subject,
         "html": html,
     }).encode("utf-8")
@@ -91,7 +101,7 @@ def _send_via_resend(subject: str, html: str) -> tuple[bool, str]:
         _RESEND_URL,
         data=payload,
         headers={
-            "Authorization": f"Bearer {_API_KEY}",
+            "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
         },
         method="POST",
@@ -108,15 +118,6 @@ def _send_via_resend(subject: str, html: str) -> tuple[bool, str]:
             try:
                 body = e.read().decode("utf-8", errors="replace")
                 code = getattr(e, "code", "?")
-                if code == 403:
-                    return False, (
-                        f"Resend 403 Forbidden — {body}. "
-                        "Most likely causes: (1) invalid API key, or "
-                        "(2) on Resend free plan you must send TO the same email you signed up with. "
-                        "Fix: set ALERT_EMAIL_TO to your Resend account email, or verify your domain at resend.com/domains"
-                    )
-                if code == 422:
-                    return False, f"Resend 422 Unprocessable — check ALERT_EMAIL_TO format: {body}"
                 return False, f"Resend HTTP {code}: {body}"
             except Exception:
                 pass
@@ -130,11 +131,14 @@ def send_test_email() -> dict:
     Synchronously sends a test email via Resend and returns a result dict.
     Called by GET /api/notifications/test for quick diagnosis.
     """
+    api_key = _get_api_key()
+    to_email = _get_to_email()
+
     if not _is_configured():
         missing = []
-        if not _API_KEY:
+        if not api_key:
             missing.append("RESEND_API_KEY")
-        if not _TO:
+        if not to_email:
             missing.append("ALERT_EMAIL_TO")
         return {"ok": False, "error": f"Missing environment variables: {', '.join(missing)}"}
 
@@ -147,8 +151,8 @@ def send_test_email() -> dict:
     )
     ok, err = _send_via_resend(subject, html)
     if ok:
-        return {"ok": True, "message": f"Test email sent to {_TO} via Resend ✅"}
-    return {"ok": False, "error": err}
+        return {"ok": True, "message": f"Test email sent to {to_email} via Resend ✅"}
+    return {"ok": False, "error": err, "to": to_email, "from": _get_from_email()}
 
 
 def dispatch_alert(
