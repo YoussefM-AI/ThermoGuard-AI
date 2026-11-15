@@ -296,6 +296,7 @@ class ThermoGuardApp {
       this.fetchSystemStatus();
       this.fetchLatestReading();
       this.fetchAlerts();
+      this.fetchReadings(); // keep chart + anomaly dots live
     }, this.pollIntervalMs);
   }
 
