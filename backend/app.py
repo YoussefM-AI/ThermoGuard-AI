@@ -13,7 +13,11 @@ if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
 
 from flask import Flask, jsonify, send_from_directory  # noqa: E402
-from flask_cors import CORS  # noqa: E402
+
+try:
+    from flask_cors import CORS  # noqa: E402
+except ImportError:
+    CORS = None
 
 from backend.database import DEFAULT_DB_PATH, init_db, insert_system_event  # noqa: E402
 from backend.routes import api_bp  # noqa: E402
@@ -28,7 +32,16 @@ def create_app(test_config=None) -> Flask:
     app = Flask(__name__, static_folder=FRONTEND_DIR)
 
     # Enable CORS for all routes (enables ESP32 and remote browser dashboards)
-    CORS(app, resources={r"/api/*": {"origins": "*"}})
+    if CORS is not None:
+        CORS(app, resources={r"/api/*": {"origins": "*"}})
+    else:
+
+        @app.after_request
+        def add_cors_headers(response):
+            response.headers["Access-Control-Allow-Origin"] = "*"
+            response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+            response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+            return response
 
     # Database initialization
     if test_config and "DATABASE" in test_config:

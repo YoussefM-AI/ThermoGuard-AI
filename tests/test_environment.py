@@ -32,6 +32,9 @@ def run_checks():
                 ver = getattr(mod, "__version__", "builtin")
             print(f"  [PASS] {label:<16} (version: {ver})")
         except ImportError as e:
+            if mod_name == "flask_cors":
+                print(f"  [INFO] {label:<16} Not installed; using built-in backend CORS fallback.")
+                continue
             print(f"  [FAIL] {label:<16} Import failed: {e}")
             return False
 

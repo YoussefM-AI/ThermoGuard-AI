@@ -12,7 +12,9 @@ DB_PATH = os.getenv("THERMOGUARD_DB", os.path.join(DATA_DIR, "thermoguard.db"))
 
 # --- AI Model ---
 AI_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "ai")
-MODEL_PATH = os.getenv("THERMOGUARD_MODEL_PATH", os.path.join(DATA_DIR, "model.pkl"))
+_AI_MODEL = os.path.join(AI_DIR, "model.pkl")
+_DATA_MODEL = os.path.join(DATA_DIR, "model.pkl")
+MODEL_PATH = os.getenv("THERMOGUARD_MODEL_PATH", _AI_MODEL if os.path.exists(_AI_MODEL) else _DATA_MODEL)
 
 # --- Safety Thresholds (configurable via environment variables) ---
 TEMP_WARNING_C  = float(os.getenv("TEMP_WARNING",  "38.0"))   # °C

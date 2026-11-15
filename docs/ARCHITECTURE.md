@@ -12,8 +12,7 @@ ThermoGuard AI is a lightweight industrial IoT system for monitoring temperature
 ┌─────────────────────────────────────────────────────────────┐
 │                     ESP32 DevKit V1                         │
 │                                                             │
-│  DHT11 (physical) │ DHT22 (Wokwi)                          │
-│  GPIO 4 ──────────┘                                         │
+│  DHT11 Sensor on GPIO 4                                     │
 │                                                             │
 │  • Read temp + humidity every 3s                            │
 │  • Validate (NaN, range check)                              │
@@ -48,16 +47,16 @@ ThermoGuard AI is a lightweight industrial IoT system for monitoring temperature
 
 ### 1. ESP32 Sensor Node
 
-| Property     | Physical Hardware  | Wokwi Simulation   |
-|-------------|--------------------|--------------------|
-| Board       | ESP32 DevKit V1    | ESP32 DevKit V1    |
-| Sensor      | DHT11              | DHT22              |
-| GPIO Pin    | GPIO 4             | GPIO 4             |
-| Interval    | 3 000 ms           | 3 000 ms           |
-| Firmware    | esp32/cabinet_sensor.ino | wokwi/sketch.ino |
-| Source tag  | HARDWARE           | HARDWARE           |
+| Property     | Physical Hardware Node |
+|-------------|------------------------|
+| Board       | ESP32 DevKit V1        |
+| Sensor      | DHT11                  |
+| GPIO Pin    | GPIO 4                 |
+| Interval    | 3 000 ms               |
+| Firmware    | esp32/cabinet_sensor.ino |
+| Source tag  | HARDWARE               |
 
-Both firmwares send the same JSON payload to `/api/readings`.
+The firmware sends validated JSON payloads (`{ temperature, humidity, source }`) to `/api/readings`.
 
 ---
 
@@ -176,7 +175,7 @@ Tables are created automatically on first boot via `CREATE TABLE IF NOT EXISTS`.
 1. **Dashboard** — System status hero, 4 KPI cards (System, Temp, Humidity, AI), historical chart, recent alerts, simulation controls
 2. **History** — Full telemetry log with source/anomaly filtering + CSV export
 3. **Alerts** — SCADA alarm desk with severity filters and acknowledge actions
-4. **Settings** — Wokwi setup guide, hardware pinout, cloud architecture, AI diagnostics
+4. **Settings** — ESP32 hardware setup guide, pinout table, cloud architecture, AI diagnostics
 
 **Polling:** Every 2 seconds for live updates.
 

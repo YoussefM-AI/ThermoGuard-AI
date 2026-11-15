@@ -72,27 +72,23 @@ const bool  USE_CLOUD_ENDPOINT = false;        // Local mode
 
 ---
 
-## 3. Connecting via Wokwi (Virtual Simulation)
+## 3. Testing via Python Simulator
 
-### Local Mode (Wokwi IoT Gateway)
+You can generate realistic telemetry and test all 5 failure modes without physical hardware:
 
-1. Start the Flask backend locally on port 5000
-2. Install [Wokwi for VS Code](https://marketplace.visualstudio.com/items?itemName=wokwi.wokwi-vscode) **or** go to [wokwi.com](https://wokwi.com)
-3. Create a new ESP32 project
-4. Paste contents of `wokwi/sketch.ino` as the firmware
-5. Paste contents of `wokwi/diagram.json` as the circuit diagram
-6. The firmware uses `DASHBOARD_URL = "http://10.0.2.2:5000/api/readings"` — this routes through the Wokwi IoT Gateway to your host PC
+### Via Dashboard UI:
+1. Open `http://localhost:5000` in your browser.
+2. Under **Simulation Control**, select any scenario (e.g., Thermal Spike, Humidity Leak).
+3. Click **Start Simulation**.
 
-> `10.0.2.2` is the Wokwi Gateway's address for your host machine. Do not change it for local mode.
+### Via CLI:
+```bash
+# Run 10 steps of normal scenario
+python simulation/simulator.py --scenario normal --interval 2.0
 
-### Cloud Mode (Wokwi → Cloud)
-
-1. Deploy ThermoGuard AI to cloud (see section 4)
-2. In `wokwi/sketch.ino`, change:
-   ```cpp
-   const char* DASHBOARD_URL = "https://your-thermoguard-app.onrender.com/api/readings";
-   ```
-3. Run Wokwi — it will send data directly to your cloud backend
+# Run gradual temperature increase
+python simulation/simulator.py --scenario gradual_temp --steps 20
+```
 
 ---
 
@@ -233,11 +229,6 @@ This error occurred in the old version. The new backend calls `init_db()` on sta
 - Verify `LOCAL_SERVER_IP` matches your PC's actual LAN IP (`ipconfig`)
 - Ensure PC firewall allows connections on port 5000
 - Check Serial Monitor output for connection status
-
-### Wokwi cannot reach backend
-- Ensure Flask backend is running and accessible
-- For local mode, the Wokwi IoT Gateway must be running (VS Code extension or desktop app)
-- For cloud mode, verify the HTTPS URL is correct and the server is live
 
 ### AI model not loaded
 The model loads automatically from `ai/model.pkl`. If missing, the system uses statistical heuristics automatically. To retrain:

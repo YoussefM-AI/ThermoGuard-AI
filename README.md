@@ -15,7 +15,7 @@
 Industrial electrical cabinets house critical switchgear, motor drives, transformers, and electronic control systems. Adverse microclimatic conditions inside these enclosures—such as excessive thermal accumulation, ventilation fan blockage, dust accumulation, or moisture ingress from compromised seals—accelerate component degradation and cause critical hardware downtime.
 
 **ThermoGuard AI** is a complete, real-world Hybrid IoT and unsupervised machine learning platform designed to monitor temperature and relative humidity inside electrical enclosures:
-1. **Telemetry Ingestion:** Receives environmental telemetry from physical **ESP32** nodes, online **Wokwi** simulations, or an in-process **Simulation Engine**.
+1. **Telemetry Ingestion:** Receives environmental telemetry from physical **ESP32** nodes or an in-process **Simulation Engine**.
 2. **AI Anomaly Detection:** Evaluates incoming observations in real time using an unsupervised **Isolation Forest** model with engineered rolling & differential features.
 3. **Smart Tiered Alarms:** Dispatches tiered alarms (**WARNING** and **CRITICAL**) based on physical safety bounds and multivariate anomaly scores.
 4. **Streamlined Web Dashboard:** Clean, modern, dark navy/black UI with 4 focused views: **Dashboard**, **History**, **Alerts**, and **Settings**.
@@ -30,11 +30,11 @@ Industrial electrical cabinets house critical switchgear, motor drives, transfor
 
 ```text
        +-----------------------+              +---------------------------+
-       |   ESP32 Physical Node |              |    Wokwi Cloud Simulation |
-       |  DHT11 Sensor (GPIO 4)|              |    DHT22 Sensor (GPIO 4)  |
+       |   ESP32 Physical Node |              |    Simulation Engine      |
+       |  DHT11 Sensor (GPIO 4)|              |    (5 Scenarios Engine)   |
        +-----------+-----------+              +-------------+-------------+
                    |                                        |
-       Wi-Fi / HTTP POST                               HTTP POST (Gateway / Tunnel)
+       Wi-Fi / HTTP POST                            In-Process / HTTP POST
                    |                                        |
                    +-------------------+--------------------+
                                        |
@@ -64,7 +64,7 @@ Industrial electrical cabinets house critical switchgear, motor drives, transfor
                     |   - Dashboard (Status, KPIs, Chart)|
                     |   - History (Logs & CSV Export)    |
                     |   - Alerts (SCADA Alarm Desk)      |
-                    |   - Settings (Wokwi & Pinout Info) |
+                    |   - Settings (Hardware & Pinout)   |
                     +------------------------------------+
 ```
 
@@ -81,12 +81,9 @@ Industrial electrical cabinets house critical switchgear, motor drives, transfor
 
 ---
 
-## 4. Hardware Wiring & Wokwi Simulation Invariants
+## 4. Hardware Wiring & ESP32 Configuration
 
-> [!IMPORTANT]
-> **Strict Sensor Pinout & Distinction:**
-> - **Physical ESP32 Node:** Uses **DHT11** connected to **GPIO 4** (configured in [`esp32/cabinet_sensor.ino`](file:///c:/Users/HP/.gemini/antigravity/scratch/CabinetSense-AI/esp32/cabinet_sensor.ino)).
-> - **Virtual Wokwi Node:** Uses **DHT22** connected to **GPIO 4** (configured in [`wokwi/sketch.ino`](file:///c:/Users/HP/.gemini/antigravity/scratch/CabinetSense-AI/wokwi/sketch.ino) and [`wokwi/diagram.json`](file:///c:/Users/HP/.gemini/antigravity/scratch/CabinetSense-AI/wokwi/diagram.json)).
+The physical telemetry node uses an **ESP32 DevKit V1** and a **DHT11** sensor connected to **GPIO 4** (configured in [`esp32/cabinet_sensor.ino`](esp32/cabinet_sensor.ino)).
 
 ### 4.1 Physical Hardware Pinout Table
 
@@ -98,20 +95,23 @@ Industrial electrical cabinets house critical switchgear, motor drives, transfor
 
 *Note: If using a bare 4-pin DHT11 without a built-in module PCB, place a 10kΩ pull-up resistor between VCC (3.3V) and DATA (GPIO 4).*
 
-### 4.2 Connecting Wokwi Simulation to the Dashboard
+### 4.2 ESP32 Firmware Configuration
 
-When running the virtual simulation on [Wokwi](https://wokwi.com/):
-1. Copy [`wokwi/sketch.ino`](file:///c:/Users/HP/.gemini/antigravity/scratch/CabinetSense-AI/wokwi/sketch.ino) and [`wokwi/diagram.json`](file:///c:/Users/HP/.gemini/antigravity/scratch/CabinetSense-AI/wokwi/diagram.json) into Wokwi.
-2. In `sketch.ino`, configure the target endpoint:
-   - **Local Gateway Mode (with Wokwi IoT Gateway running):**
+1. Open [`esp32/cabinet_sensor.ino`](esp32/cabinet_sensor.ino) in Arduino IDE or VS Code (PlatformIO).
+2. Configure your Wi-Fi credentials (`WIFI_SSID` and `WIFI_PASSWORD`).
+3. Set your target backend endpoint:
+   - **Local LAN Prototyping:**
      ```cpp
-     const char* DASHBOARD_URL = "http://10.0.2.2:5000/api/readings";
+     const bool USE_CLOUD_ENDPOINT = false;
+     const char* LOCAL_SERVER_IP = "192.168.1.100"; // Your PC's LAN IP
+     const int LOCAL_SERVER_PORT = 5000;
      ```
-   - **Cloud or Tunnel Mode (Render, Railway, Cloudflared, Ngrok):**
+   - **Cloud Deployment (Render / Railway):**
      ```cpp
-     const char* DASHBOARD_URL = "https://your-public-url.com/api/readings";
+     const bool USE_CLOUD_ENDPOINT = true;
+     const char* CLOUD_SERVER_URL = "https://your-thermoguard-ai.onrender.com/api/readings";
      ```
-3. Start the simulation. Click the DHT22 component on the schematic to slide temperature & humidity and observe the live response on your ThermoGuard AI dashboard.
+4. Flash the ESP32. Telemetry will automatically stream every 3 seconds to the dashboard.
 
 ---
 
@@ -141,7 +141,7 @@ ThermoGuard AI features a streamlined, dark navy/black UI designed for industria
    - 4 KPI metric cards: System Connectivity, Current Temperature, Current Humidity, AI Anomaly Assessment.
    - Combined historical telemetry chart with industrial threshold guide lines (38°C warning, 52°C critical).
    - Recent Alerts list with 1-click Acknowledge button.
-   - Quick Wokwi & simulation controls.
+   - Environmental simulation scenario controls.
 2. **History:**
    - Full telemetry log with pagination and source filter (Hardware vs Simulation vs Anomalies).
    - 1-click **Export CSV** button calling `/api/export/csv`.
@@ -149,8 +149,7 @@ ThermoGuard AI features a streamlined, dark navy/black UI designed for industria
    - SCADA Alarm Desk with severity filters (All, Unresolved, Critical, Warning).
    - Instant alarm acknowledgment with recorded resolution audits.
 4. **Settings:**
-   - Wokwi simulation guide with 1-click endpoint URL copy.
-   - Physical hardware pinout and wiring reference.
+   - Physical hardware ESP32 setup and pinout wiring reference.
    - Hybrid Cloud architecture status.
    - Isolation Forest hyper-parameter diagnostics.
 
@@ -161,7 +160,7 @@ ThermoGuard AI features a streamlined, dark navy/black UI designed for industria
 ### 7.1 Clone and Environment Setup
 ```bash
 # Navigate to project directory
-cd CabinetSense-AI
+cd ThermoGuard-AI
 
 # Verify Python environment
 python tests/test_environment.py
@@ -217,9 +216,9 @@ ThermoGuard AI includes an automated unit and integration test suite:
 python -m unittest discover tests
 ```
 
-- [`tests/test_environment.py`](file:///c:/Users/HP/.gemini/antigravity/scratch/CabinetSense-AI/tests/test_environment.py): Library imports, Scikit-learn instantiation, SQLite engine.
-- [`tests/test_simulation.py`](file:///c:/Users/HP/.gemini/antigravity/scratch/CabinetSense-AI/tests/test_simulation.py): All 5 simulation scenarios, bounding, packet drop flags, thread lifecycle.
-- [`tests/test_database.py`](file:///c:/Users/HP/.gemini/antigravity/scratch/CabinetSense-AI/tests/test_database.py): Schema initialization, reading insertion, deduplication window, alert lifecycle.
-- [`tests/test_api.py`](file:///c:/Users/HP/.gemini/antigravity/scratch/CabinetSense-AI/tests/test_api.py): REST endpoint contracts, payload validation, status codes, simulation triggers, CSV export.
-- [`tests/test_ai.py`](file:///c:/Users/HP/.gemini/antigravity/scratch/CabinetSense-AI/tests/test_ai.py): Model serialization, feature engineering, normal prediction, anomaly sensitivity.
-- [`tests/test_frontend.py`](file:///c:/Users/HP/.gemini/antigravity/scratch/CabinetSense-AI/tests/test_frontend.py): Web server asset delivery, 4 streamlined SPA views, CSS/JS bundling.
+- [`tests/test_environment.py`](tests/test_environment.py): Library imports, Scikit-learn instantiation, SQLite engine.
+- [`tests/test_simulation.py`](tests/test_simulation.py): All 5 simulation scenarios, bounding, packet drop flags, thread lifecycle.
+- [`tests/test_database.py`](tests/test_database.py): Schema initialization, reading insertion, deduplication window, alert lifecycle.
+- [`tests/test_api.py`](tests/test_api.py): REST endpoint contracts, payload validation, status codes, simulation triggers, CSV export.
+- [`tests/test_ai.py`](tests/test_ai.py): Model serialization, feature engineering, normal prediction, anomaly sensitivity.
+- [`tests/test_frontend.py`](tests/test_frontend.py): Web server asset delivery, 4 streamlined SPA views, CSS/JS bundling.

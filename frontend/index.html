@@ -82,7 +82,7 @@
         </div>
 
         <div class="topbar-right">
-          <!-- Wokwi / ESP32 Hardware Status Chip -->
+          <!-- ESP32 Hardware Status Chip -->
           <div class="chip chip-hardware disconnected" id="top-hw-pill">
             <i data-lucide="radio"></i>
             <span id="top-hw-text">ESP32 Offline</span>
@@ -257,28 +257,28 @@
               </div>
             </div>
 
-            <!-- Right: Wokwi & Simulation Quick Connect -->
+            <!-- Right: Simulation Control & Ingestion Guide -->
             <div class="dashboard-panel">
               <div class="panel-header">
                 <div class="panel-title-group">
                   <i data-lucide="play-circle"></i>
                   <div>
-                    <h3>Wokwi & Simulation Control</h3>
-                    <p>Connect online simulation or inject test scenarios</p>
+                    <h3>Simulation Control</h3>
+                    <p>Inject environmental test scenarios to verify AI detection</p>
                   </div>
                 </div>
               </div>
               <div class="panel-body">
                 <div class="simulation-quick-box">
-                  <div class="wokwi-quick-status">
+                  <div class="endpoint-quick-status">
                     <div class="status-indicator-box">
-                      <span class="dot" id="quick-wokwi-dot"></span>
-                      <span class="text" id="quick-wokwi-text">Wokwi ESP32: Listening for connection</span>
+                      <span class="dot" id="quick-hw-dot"></span>
+                      <span class="text" id="quick-hw-text">ESP32 Hardware: Listening for telemetry packets</span>
                     </div>
                     <div class="endpoint-code-box">
-                      <code>http://10.0.2.2:5000/api/readings</code>
+                      <code>POST /api/readings</code>
                       <button class="btn btn-xs btn-outline" id="quick-copy-url" onclick="app.copyEndpointUrl()">
-                        <i data-lucide="copy"></i> Copy
+                        <i data-lucide="copy"></i> Copy URL
                       </button>
                     </div>
                   </div>
@@ -308,7 +308,7 @@
                         <i data-lucide="play"></i> Start Simulation
                       </button>
                       <a href="#settings" class="btn btn-outline" onclick="app.navigate('settings')">
-                        <i data-lucide="cpu"></i> Wokwi Full Instructions
+                        <i data-lucide="cpu"></i> Hardware Pinout & Guide
                       </a>
                     </div>
                   </div>
@@ -427,50 +427,50 @@
         </section>
 
         <!-- ============================================== -->
-        <!-- VIEW 4: SETTINGS (WOKWI, HARDWARE & HYBRID)    -->
+        <!-- VIEW 4: SETTINGS (HARDWARE, HYBRID & AI)       -->
         <!-- ============================================== -->
         <section class="page-view" id="view-settings">
           <div class="settings-grid">
             
-            <!-- Card 1: Wokwi Online Simulation Connection Guide -->
+            <!-- Card 1: ESP32 Node Firmware & Setup Guide -->
             <div class="dashboard-panel">
               <div class="panel-header">
                 <div class="panel-title-group">
-                  <i data-lucide="wifi"></i>
+                  <i data-lucide="cpu"></i>
                   <div>
-                    <h3>Wokwi Online Simulation Setup</h3>
-                    <p>Connect your virtual ESP32 node to this live dashboard</p>
+                    <h3>ESP32 Hardware Node Setup</h3>
+                    <p>Flash and configure your physical microcontroller node</p>
                   </div>
                 </div>
               </div>
               <div class="panel-body">
                 <div class="instruction-block">
-                  <h4>How to connect Wokwi to this dashboard:</h4>
+                  <h4>How to connect your physical ESP32 to this dashboard:</h4>
                   <ol class="step-list">
                     <li>
-                      <strong>Open Wokwi Simulation:</strong>
-                      Go to <a href="https://wokwi.com" target="_blank" rel="noopener">wokwi.com</a> and create an ESP32 project.
+                      <strong>Open Arduino IDE:</strong>
+                      Open <code>esp32/cabinet_sensor.ino</code> in Arduino IDE or VS Code with PlatformIO.
                     </li>
                     <li>
-                      <strong>Paste Firmware & Circuit:</strong>
-                      Copy code from <code>wokwi/sketch.ino</code> and diagram from <code>wokwi/diagram.json</code>.
+                      <strong>Configure Wi-Fi Credentials:</strong>
+                      Update <code>WIFI_SSID</code> and <code>WIFI_PASSWORD</code> with your local 2.4 GHz network credentials.
                     </li>
                     <li>
-                      <strong>Configure Endpoint URL:</strong>
-                      In <code>sketch.ino</code>, set <code>DASHBOARD_URL</code>:
+                      <strong>Set Ingestion Endpoint:</strong>
+                      Enter your host computer's local IP address or cloud URL:
                       <div class="code-copy-group">
-                        <input type="text" id="wokwi-endpoint-input" class="form-input" readonly value="http://10.0.2.2:5000/api/readings">
-                        <button class="btn btn-sm btn-primary" onclick="app.copyInputUrl('wokwi-endpoint-input')">
-                          <i data-lucide="copy"></i> Copy URL
+                        <input type="text" id="esp32-endpoint-input" class="form-input" readonly value="http://192.168.1.100:5000/api/readings">
+                        <button class="btn btn-sm btn-primary" onclick="app.copyInputUrl('esp32-endpoint-input')">
+                          <i data-lucide="copy"></i> Copy Format
                         </button>
                       </div>
                       <small class="help-text">
-                        * Note: <code>10.0.2.2</code> is the IP used by the Wokwi IoT Gateway to reach your host PC. If using Cloud/Tunnel, paste your public HTTPS URL.
+                        * Set <code>USE_CLOUD_ENDPOINT = false</code> for local LAN prototyping or <code>true</code> when deploying to Render / Railway.
                       </small>
                     </li>
                     <li>
-                      <strong>Run & Interact:</strong>
-                      Click Play in Wokwi, then click the virtual <strong>DHT22</strong> sensor to slide temperature & humidity in real time!
+                      <strong>Upload Firmware:</strong>
+                      Select <strong>ESP32 Dev Module</strong>, connect via USB, and click Upload. The onboard LED will confirm connection.
                     </li>
                   </ol>
                 </div>
@@ -481,9 +481,9 @@
             <div class="dashboard-panel">
               <div class="panel-header">
                 <div class="panel-title-group">
-                  <i data-lucide="cpu"></i>
+                  <i data-lucide="zap"></i>
                   <div>
-                    <h3>Hardware Pinout & Configuration</h3>
+                    <h3>Hardware Pinout & Wiring</h3>
                     <p>Physical ESP32 node wiring specification</p>
                   </div>
                 </div>
@@ -496,25 +496,32 @@
                         <tr>
                           <th>Component</th>
                           <th>Sensor Model</th>
-                          <th>Pin</th>
-                          <th>ESP32 GPIO</th>
+                          <th>Sensor Pin</th>
+                          <th>ESP32 GPIO Connection</th>
                           <th>Voltage</th>
                         </tr>
                       </thead>
                       <tbody>
                         <tr>
-                          <td><strong>Physical Node</strong></td>
+                          <td><strong>Cabinet Sensor</strong></td>
                           <td><span class="badge badge-normal">DHT11</span></td>
-                          <td>DATA (Out)</td>
-                          <td><strong class="text-blue">GPIO 4</strong></td>
-                          <td>3.3V (3V3)</td>
+                          <td>VCC (+)</td>
+                          <td><strong class="text-blue">3V3</strong> (3.3V Power)</td>
+                          <td>3.3V DC</td>
                         </tr>
                         <tr>
-                          <td><strong>Virtual Simulation</strong></td>
-                          <td><span class="badge badge-purple">DHT22</span></td>
-                          <td>SDA / DATA</td>
-                          <td><strong class="text-blue">GPIO 4</strong></td>
-                          <td>3.3V (3V3)</td>
+                          <td><strong>Cabinet Sensor</strong></td>
+                          <td><span class="badge badge-normal">DHT11</span></td>
+                          <td>DATA (Out)</td>
+                          <td><strong class="text-blue">GPIO 4</strong> (Digital I/O)</td>
+                          <td>3.3V Logic</td>
+                        </tr>
+                        <tr>
+                          <td><strong>Cabinet Sensor</strong></td>
+                          <td><span class="badge badge-normal">DHT11</span></td>
+                          <td>GND (-)</td>
+                          <td><strong class="text-blue">GND</strong> (Ground)</td>
+                          <td>0V Ref</td>
                         </tr>
                       </tbody>
                     </table>
@@ -522,9 +529,8 @@
                   <div class="hardware-note">
                     <i data-lucide="info"></i>
                     <div>
-                      <strong>Hardware Distinction Maintained:</strong>
-                      Physical hardware uses <code>DHT11</code> on GPIO 4 (configured in <code>esp32/cabinet_sensor.ino</code>).
-                      Virtual Wokwi simulation uses <code>DHT22</code> on GPIO 4 (configured in <code>wokwi/sketch.ino</code>).
+                      <strong>Pull-Up Resistor Note:</strong>
+                      If using a 3-pin DHT11 module with a small PCB, the pull-up resistor is already onboard. If using a bare 4-pin DHT11 sensor, place a 10kΩ resistor between VCC (3.3V) and DATA (GPIO 4), and leave pin 3 unconnected.
                     </div>
                   </div>
                 </div>

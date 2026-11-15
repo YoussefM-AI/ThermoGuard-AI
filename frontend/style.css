@@ -714,7 +714,7 @@ body {
   gap: 18px;
 }
 
-.wokwi-quick-status {
+.endpoint-quick-status {
   background-color: rgba(8, 12, 20, 0.5);
   border: 1px solid var(--border);
   border-radius: 8px;

@@ -104,7 +104,7 @@ class ThermoGuardApp {
       },
       settings: {
         title: "System & Hardware Settings",
-        desc: "Wokwi cloud connection, GPIO pinout reference, and simulation testing",
+        desc: "ESP32 node setup, GPIO pinout reference, and AI diagnostics",
       },
     };
 
@@ -364,19 +364,19 @@ class ThermoGuardApp {
         } else if (simRunning) {
           descEl.textContent = `Simulation running (${data.simulation.scenario_name || "Active"}). Telemetry streaming to dashboard.`;
         } else {
-          descEl.textContent = "Cabinet monitor operational. Awaiting hardware ESP32 sensor or Wokwi simulation.";
+          descEl.textContent = "Cabinet monitor operational. Awaiting hardware ESP32 sensor or test simulation.";
         }
       }
     }
 
-    // Quick Wokwi Status
-    const quickDot = document.getElementById("quick-wokwi-dot");
-    const quickText = document.getElementById("quick-wokwi-text");
+    // Quick Hardware Status
+    const quickDot = document.getElementById("quick-hw-dot");
+    const quickText = document.getElementById("quick-hw-text");
     if (quickDot && quickText) {
       quickDot.className = `dot ${hwConnected ? "connected" : ""}`;
       quickText.textContent = hwConnected
-        ? "Wokwi / Hardware ESP32 connected and streaming!"
-        : "Wokwi ESP32: Listening on port 5000";
+        ? "ESP32 Hardware connected and streaming telemetry!"
+        : "ESP32 Hardware: Listening on port 5000";
     }
 
     // Simulation button state
@@ -694,7 +694,7 @@ class ThermoGuardApp {
   }
 
   // -------------------------------------------------------------
-  // 6. SIMULATION & WOKWI QUICK HELPERS
+  // 6. SIMULATION CONTROLS & HELPERS
   // -------------------------------------------------------------
   setQuickScenario(scenario) {
     this.selectedScenario = scenario;
@@ -735,10 +735,12 @@ class ThermoGuardApp {
   }
 
   copyEndpointUrl() {
-    const url = "http://10.0.2.2:5000/api/readings";
+    const host = window.location.hostname || "127.0.0.1";
+    const port = window.location.port ? `:${window.location.port}` : ":5000";
+    const url = `${window.location.protocol}//${host}${port}/api/readings`;
     navigator.clipboard
       .writeText(url)
-      .then(() => this.showToast("Wokwi URL copied: " + url, "success"))
+      .then(() => this.showToast("Ingestion URL copied: " + url, "success"))
       .catch(() => this.showToast("Copy failed, please copy manually: " + url, "warning"));
   }
 
