@@ -103,6 +103,8 @@ def _send_via_resend(subject: str, html: str) -> tuple[bool, str]:
         headers={
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
+            "Accept": "application/json",
+            "User-Agent": "resend-python/2.0.0",
         },
         method="POST",
     )
