@@ -280,8 +280,20 @@ def train_ai_endpoint():
 
 
 # -------------------------------------------------------------
-# 7. CSV EXPORT
+# 8. NOTIFICATION TEST
 # -------------------------------------------------------------
+
+
+@api_bp.route("/notifications/test", methods=["GET"])
+def test_notifications():
+    """
+    Sends a test email alert synchronously and returns success/failure details.
+    Use this to verify ALERT_EMAIL_FROM / ALERT_EMAIL_TO / ALERT_EMAIL_PASSWORD are set correctly.
+    """
+    from backend.notifications import send_test_email
+    result = send_test_email()
+    status_code = 200 if result["ok"] else 500
+    return jsonify({"status": "success" if result["ok"] else "error", **result}), status_code
 
 
 @api_bp.route("/export/csv", methods=["GET"])

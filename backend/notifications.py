@@ -94,17 +94,47 @@ def _build_email(severity: str, message: str, temperature: float | None, humidit
     return msg
 
 
-def _send_email(msg: MIMEMultipart) -> bool:
-    """Sends via SMTP TLS. Returns True on success."""
+def _send_email(msg: MIMEMultipart) -> tuple[bool, str]:
+    """Sends via SMTP TLS. Returns (success, error_detail)."""
     try:
         with smtplib.SMTP(_HOST, _PORT, timeout=10) as server:
             server.ehlo()
             server.starttls()
             server.login(_FROM, _PASSWORD)
             server.sendmail(_FROM, _TO, msg.as_string())
-        return True
-    except (smtplib.SMTPException, OSError):
-        return False
+        return True, ""
+    except smtplib.SMTPAuthenticationError as e:
+        return False, f"Auth failed — wrong password or App Password not used: {e}"
+    except smtplib.SMTPException as e:
+        return False, f"SMTP error: {e}"
+    except OSError as e:
+        return False, f"Network error ({_HOST}:{_PORT}): {e}"
+
+
+def send_test_email() -> dict:
+    """
+    Synchronously sends a test alert email and returns a result dict.
+    Called by GET /api/notifications/test for quick diagnosis.
+    """
+    if not _is_configured():
+        missing = [k for k, v in {
+            "ALERT_EMAIL_FROM": _FROM,
+            "ALERT_EMAIL_TO": _TO,
+            "ALERT_EMAIL_PASSWORD": _PASSWORD,
+        }.items() if not v]
+        return {"ok": False, "error": f"Missing environment variables: {', '.join(missing)}"}
+
+    msg = _build_email(
+        severity="CRITICAL",
+        message="✅ This is a ThermoGuard AI test email. If you received this, alerts are working!",
+        temperature=55.3,
+        humidity=87.1,
+        anomaly_score=-0.041,
+    )
+    ok, err = _send_email(msg)
+    if ok:
+        return {"ok": True, "message": f"Test email sent to {_TO}"}
+    return {"ok": False, "error": err}
 
 
 def dispatch_alert(
@@ -129,9 +159,12 @@ def dispatch_alert(
 
     def _fire():
         try:
-            _send_email(msg)
-        except Exception:
-            pass  # Never crash the app over a notification failure
+            ok, err = _send_email(msg)
+            if not ok:
+                # Visible in Render logs under "Logs" tab
+                print(f"[ThermoGuard] Email alert FAILED: {err}", flush=True)
+        except Exception as exc:
+            print(f"[ThermoGuard] Email alert exception: {exc}", flush=True)
 
     t = threading.Thread(target=_fire, daemon=True, name="email-notify")
     t.start()
