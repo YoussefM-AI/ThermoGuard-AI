@@ -103,6 +103,24 @@ def seed_initial_readings_if_empty(conn: sqlite3.Connection):
         pass
 
 
+def _setup_wal(path: str) -> None:
+    """
+    Sets WAL journal mode using an isolated autocommit connection.
+    WAL mode must be set outside any transaction to avoid 'database is locked' on boot.
+    Safe to call multiple times — SQLite is idempotent for PRAGMA journal_mode.
+    """
+    try:
+        # isolation_level=None → autocommit; no implicit BEGIN transaction
+        raw = sqlite3.connect(path, timeout=30.0, isolation_level=None)
+        raw.execute("PRAGMA busy_timeout = 30000;")
+        raw.execute("PRAGMA journal_mode = WAL;")
+        raw.close()
+    except Exception:
+        # If WAL setup fails (e.g. read-only FS or locked), fall back to default journal mode.
+        # The app still works; WAL is a performance optimisation only.
+        pass
+
+
 def get_db_connection(db_path: str | None = None) -> sqlite3.Connection:
     """
     Creates a thread-safe connection to SQLite with dictionary cursor, 30s busy timeout, and WAL mode.
@@ -110,19 +128,16 @@ def get_db_connection(db_path: str | None = None) -> sqlite3.Connection:
     """
     path = db_path or os.getenv("THERMOGUARD_DB", os.getenv("CABINETSENSE_DB", DEFAULT_DB_PATH))
     os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
+
+    # Apply WAL via a dedicated autocommit connection first (avoids lock on shared mount)
+    _setup_wal(path)
+
     conn = sqlite3.connect(path, timeout=30.0, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     try:
         conn.execute("PRAGMA busy_timeout = 30000;")
-    except sqlite3.OperationalError:
-        pass
-    try:
-        conn.execute("PRAGMA journal_mode = WAL;")
-    except sqlite3.OperationalError:
-        pass
-    try:
         conn.execute("PRAGMA foreign_keys = ON;")
-    except sqlite3.OperationalError:
+    except Exception:
         pass
 
     ensure_schema(conn)
