@@ -52,3 +52,6 @@ data/*.db-wal
 Thumbs.db
 Desktop.ini
 .DS_Store
+
+# Arduino local sketch folder with personal credentials
+esp32/cabinet_sensor/

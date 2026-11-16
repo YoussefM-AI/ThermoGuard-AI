@@ -16,7 +16,7 @@
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
   
-  <link rel="stylesheet" href="style.css?v=4">
+  <link rel="stylesheet" href="style.css?v=8">
 </head>
 <body>
   <div class="app-container">
@@ -411,7 +411,7 @@
                     </div>
                     <div style="margin-top:8px;display:flex;gap:10px;">
                       <a href="#settings" class="btn btn-primary" style="flex:1;" onclick="app.navigate('settings')">
-                        <i data-lucide="cpu"></i> View Wiring & Firmware Code
+                        <i data-lucide="settings"></i> System Settings
                       </a>
                     </div>
                   </div>
@@ -532,117 +532,12 @@
         </section>
 
         <!-- ============================================== -->
-        <!-- VIEW 4: SETTINGS (HARDWARE, HYBRID & AI)       -->
+        <!-- VIEW 4: SETTINGS (HYBRID ARCHITECTURE & AI)    -->
         <!-- ============================================== -->
         <section class="page-view" id="view-settings">
           <div class="settings-grid">
             
-            <!-- Card 1: ESP32 Node Firmware & Setup Guide -->
-            <div class="dashboard-panel">
-              <div class="panel-header">
-                <div class="panel-title-group">
-                  <i data-lucide="cpu"></i>
-                  <div>
-                    <h3>ESP32 Hardware Node Setup</h3>
-                    <p>Flash and configure your physical microcontroller node</p>
-                  </div>
-                </div>
-              </div>
-              <div class="panel-body">
-                <div class="instruction-block">
-                  <h4>How to connect your physical ESP32 to this dashboard:</h4>
-                  <ol class="step-list">
-                    <li>
-                      <strong>Open Arduino IDE:</strong>
-                      Open <code>esp32/cabinet_sensor.ino</code> in Arduino IDE or VS Code with PlatformIO.
-                    </li>
-                    <li>
-                      <strong>Configure Wi-Fi Credentials:</strong>
-                      Update <code>WIFI_SSID</code> and <code>WIFI_PASSWORD</code> with your local 2.4 GHz network credentials.
-                    </li>
-                    <li>
-                      <strong>Set Ingestion Endpoint:</strong>
-                      Enter your host computer's local IP address or cloud URL:
-                      <div class="code-copy-group">
-                        <input type="text" id="esp32-endpoint-input" class="form-input" readonly value="http://192.168.1.100:5000/api/readings">
-                        <button class="btn btn-sm btn-primary" onclick="app.copyInputUrl('esp32-endpoint-input')">
-                          <i data-lucide="copy"></i> Copy Format
-                        </button>
-                      </div>
-                      <small class="help-text">
-                        * Set <code>USE_CLOUD_ENDPOINT = false</code> for local LAN prototyping or <code>true</code> when deploying to Render / Railway.
-                      </small>
-                    </li>
-                    <li>
-                      <strong>Upload Firmware:</strong>
-                      Select <strong>ESP32 Dev Module</strong>, connect via USB, and click Upload. The onboard LED will confirm connection.
-                    </li>
-                  </ol>
-                </div>
-              </div>
-            </div>
-
-            <!-- Card 2: Physical Hardware & Sensor Pinout -->
-            <div class="dashboard-panel">
-              <div class="panel-header">
-                <div class="panel-title-group">
-                  <i data-lucide="zap"></i>
-                  <div>
-                    <h3>Hardware Pinout & Wiring</h3>
-                    <p>Physical ESP32 node wiring specification</p>
-                  </div>
-                </div>
-              </div>
-              <div class="panel-body">
-                <div class="pinout-card">
-                  <div class="pinout-table-wrapper">
-                    <table class="data-table">
-                      <thead>
-                        <tr>
-                          <th>Component</th>
-                          <th>Sensor Model</th>
-                          <th>Sensor Pin</th>
-                          <th>ESP32 GPIO Connection</th>
-                          <th>Voltage</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr>
-                          <td><strong>Cabinet Sensor</strong></td>
-                          <td><span class="badge badge-normal">DHT11</span></td>
-                          <td>VCC (+)</td>
-                          <td><strong class="text-blue">3V3</strong> (3.3V Power)</td>
-                          <td>3.3V DC</td>
-                        </tr>
-                        <tr>
-                          <td><strong>Cabinet Sensor</strong></td>
-                          <td><span class="badge badge-normal">DHT11</span></td>
-                          <td>DATA (Out)</td>
-                          <td><strong class="text-blue">GPIO 4</strong> (Digital I/O)</td>
-                          <td>3.3V Logic</td>
-                        </tr>
-                        <tr>
-                          <td><strong>Cabinet Sensor</strong></td>
-                          <td><span class="badge badge-normal">DHT11</span></td>
-                          <td>GND (-)</td>
-                          <td><strong class="text-blue">GND</strong> (Ground)</td>
-                          <td>0V Ref</td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
-                  <div class="hardware-note">
-                    <i data-lucide="info"></i>
-                    <div>
-                      <strong>Pull-Up Resistor Note:</strong>
-                      If using a 3-pin DHT11 module with a small PCB, the pull-up resistor is already onboard. If using a bare 4-pin DHT11 sensor, place a 10kΩ resistor between VCC (3.3V) and DATA (GPIO 4), and leave pin 3 unconnected.
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Card 3: Hybrid IoT + Cloud Architecture -->
+            <!-- Card 1: Hybrid IoT + Cloud Architecture -->
             <div class="dashboard-panel">
               <div class="panel-header">
                 <div class="panel-title-group">
@@ -709,6 +604,6 @@
   </div>
 
   <div class="toast-container" id="toast-container"></div>
-  <script src="script.js?v=7"></script>
+  <script src="script.js?v=8"></script>
 </body>
 </html>

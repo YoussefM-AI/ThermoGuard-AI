@@ -101,8 +101,8 @@ class ThermoGuardApp {
         desc: "Real-time fault tracking, temperature breaches, and alert resolution",
       },
       settings: {
-        title: "System & Hardware Settings",
-        desc: "ESP32 node setup, GPIO pinout reference, and AI diagnostics",
+        title: "System & Architecture Settings",
+        desc: "Cloud architecture specifications and AI diagnostics",
       },
     };
 
