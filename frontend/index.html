@@ -369,23 +369,24 @@
               </div>
             </div>
 
-            <!-- Right: Simulation Control & Ingestion Guide -->
+            <!-- Right: ESP32 Hardware Ingestion & Node Monitor -->
             <div class="dashboard-panel">
               <div class="panel-header">
                 <div class="panel-title-group">
-                  <i data-lucide="play-circle"></i>
+                  <i data-lucide="cpu"></i>
                   <div>
-                    <h3>Simulation Control</h3>
-                    <p>Inject environmental test scenarios to verify AI detection</p>
+                    <h3>ESP32 Hardware Telemetry Node</h3>
+                    <p>Live physical sensor link, client IP, and transmission endpoint</p>
                   </div>
                 </div>
+                <span class="badge badge-normal" id="hw-node-badge">Awaiting Sensor</span>
               </div>
               <div class="panel-body">
                 <div class="simulation-quick-box">
                   <div class="endpoint-quick-status">
                     <div class="status-indicator-box">
                       <span class="dot" id="quick-hw-dot"></span>
-                      <span class="text" id="quick-hw-text">ESP32 Hardware: Listening for telemetry packets</span>
+                      <span class="text" id="quick-hw-text">ESP32 Hardware: Listening on /api/readings</span>
                     </div>
                     <div class="endpoint-code-box">
                       <code>POST /api/readings</code>
@@ -395,29 +396,22 @@
                     </div>
                   </div>
 
-                  <div class="quick-sim-controls">
-                    <label class="control-label">Inject Simulation Scenario:</label>
-                    <div class="sim-selector-grid">
-                      <button class="sim-btn active" data-scenario="normal" onclick="app.setQuickScenario('normal')">
-                        Normal Baseline
-                      </button>
-                      <button class="sim-btn" data-scenario="gradual_temp" onclick="app.setQuickScenario('gradual_temp')">
-                        Thermal Spike (55°C)
-                      </button>
-                      <button class="sim-btn" data-scenario="abnormal_hum" onclick="app.setQuickScenario('abnormal_hum')">
-                        Humidity Leak (88%)
-                      </button>
-                      <button class="sim-btn" data-scenario="combined" onclick="app.setQuickScenario('combined')">
-                        Combined Failure
-                      </button>
+                  <div class="hw-node-details" style="margin-top:16px;display:flex;flex-direction:column;gap:10px;">
+                    <div class="alert-pill" style="display:flex;justify-content:space-between;padding:10px 14px;">
+                      <span style="color:var(--text-muted);font-size:13px;">Sensor Model</span>
+                      <span style="font-weight:600;color:var(--text-primary);font-size:13px;">DHT11 (Digital I/O GPIO 4)</span>
                     </div>
-
-                    <div class="sim-action-row">
-                      <button class="btn btn-primary" id="btn-quick-start-sim" onclick="app.toggleSimulation()">
-                        <i data-lucide="play"></i> Start Simulation
-                      </button>
-                      <a href="#settings" class="btn btn-outline" onclick="app.navigate('settings')">
-                        <i data-lucide="cpu"></i> Hardware Pinout & Guide
+                    <div class="alert-pill" style="display:flex;justify-content:space-between;padding:10px 14px;">
+                      <span style="color:var(--text-muted);font-size:13px;">Node IP Address</span>
+                      <span style="font-family:var(--font-mono);color:#38BDF8;font-size:13px;" id="hw-client-ip">None (Offline)</span>
+                    </div>
+                    <div class="alert-pill" style="display:flex;justify-content:space-between;padding:10px 14px;">
+                      <span style="color:var(--text-muted);font-size:13px;">Last Heartbeat</span>
+                      <span style="font-family:var(--font-mono);color:var(--text-secondary);font-size:13px;" id="hw-last-seen">Never</span>
+                    </div>
+                    <div style="margin-top:8px;display:flex;gap:10px;">
+                      <a href="#settings" class="btn btn-primary" style="flex:1;" onclick="app.navigate('settings')">
+                        <i data-lucide="cpu"></i> View Wiring & Firmware Code
                       </a>
                     </div>
                   </div>
@@ -447,7 +441,6 @@
                   <select id="history-source-filter" class="form-select" onchange="app.filterHistory()">
                     <option value="ALL">All Sources</option>
                     <option value="HARDWARE">Hardware (ESP32)</option>
-                    <option value="SIMULATION">Simulation</option>
                     <option value="ANOMALY">Anomalies Only</option>
                   </select>
                 </div>
@@ -716,6 +709,6 @@
   </div>
 
   <div class="toast-container" id="toast-container"></div>
-  <script src="script.js?v=6"></script>
+  <script src="script.js?v=7"></script>
 </body>
 </html>

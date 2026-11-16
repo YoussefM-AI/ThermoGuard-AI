@@ -94,7 +94,7 @@ def seed_initial_readings_if_empty(conn: sqlite3.Connection):
                 cur.execute(
                     """
                     INSERT INTO readings (timestamp, temperature, humidity, source, is_anomaly, anomaly_score)
-                    VALUES (?, ?, ?, 'SIMULATION', 0, 0.065)
+                    VALUES (?, ?, ?, 'HARDWARE', 0, 0.065)
                 """,
                     (dt.isoformat(), t, h),
                 )
@@ -185,7 +185,7 @@ def is_duplicate_reading(
 def insert_reading(
     temperature: float,
     humidity: float,
-    source: str = "SIMULATION",
+    source: str = "HARDWARE",
     is_anomaly: int = 0,
     anomaly_score: float = 0.0,
     timestamp: str | None = None,

@@ -9,14 +9,7 @@ services:
         value: 3.11.9
       - key: THERMOGUARD_DB
         value: /opt/render/project/src/data/thermoguard.db
-      # Auto-start simulation so cloud dashboard always has live data
-      - key: AUTO_START_SIMULATION
-        value: "true"
-      - key: AUTO_SIM_SCENARIO
-        value: normal
-      - key: AUTO_SIM_INTERVAL
-        value: "3.0"
-      # Optional: set TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID in Render dashboard
+      # Optional: set ALERT_EMAIL_TO + RESEND_API_KEY in Render dashboard for email alerts
       # Optional: set THERMOGUARD_API_KEY in Render dashboard for endpoint protection
     disk:
       name: thermoguard-data

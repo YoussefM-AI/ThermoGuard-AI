@@ -9,12 +9,10 @@ class ThermoGuardApp {
     this.apiBase = "/api";
     this.pollIntervalMs = 2000;
     this.chartHistoryLimit = 25;
-    this.selectedScenario = "normal";
     this.alertFilter = "ALL";
     this.pollTimer = null;
     this.historyChart = null;
     this.cachedReadings = [];
-    this.isSimulating = false;
 
     this.init();
   }
@@ -319,9 +317,9 @@ class ThermoGuardApp {
   }
 
   renderSystemStatus(data) {
-    const isOnline = data != null && (data.monitoring_mode != null);
+    const isOnline = data != null && data.monitoring_mode != null;
     const hwConnected = data && data.hardware && data.hardware.connected;
-    const simRunning = data && data.simulation && data.simulation.running;
+    const hwStatus = (data && data.hardware) || {};
 
     // KPI System Status card
     const kpiStatus = document.getElementById("kpi-system-status");
@@ -331,16 +329,8 @@ class ThermoGuardApp {
     }
     const kpiHwBadge = document.getElementById("kpi-hw-badge");
     if (kpiHwBadge) {
-      if (hwConnected) {
-        kpiHwBadge.textContent = "ESP32 Active";
-        kpiHwBadge.className = "badge-normal";
-      } else if (simRunning) {
-        kpiHwBadge.textContent = "Simulation Active";
-        kpiHwBadge.className = "badge-purple";
-      } else {
-        kpiHwBadge.textContent = "ESP32 Inactive";
-        kpiHwBadge.className = "badge-normal";
-      }
+      kpiHwBadge.textContent = hwConnected ? "ESP32 Active" : "Awaiting Sensor";
+      kpiHwBadge.className = hwConnected ? "badge badge-normal" : "badge badge-warning";
     }
 
     // Global Topbar Pills
@@ -354,13 +344,7 @@ class ThermoGuardApp {
     const topModePill = document.getElementById("top-mode-pill");
     const topModeText = document.getElementById("top-mode-text");
     if (topModePill && topModeText) {
-      if (simRunning) {
-        topModeText.textContent = "SIMULATION RUNNING";
-      } else if (hwConnected) {
-        topModeText.textContent = "HARDWARE LIVE";
-      } else {
-        topModeText.textContent = "STANDBY";
-      }
+      topModeText.textContent = hwConnected ? "HARDWARE LIVE" : "STANDBY";
     }
 
     // Hero Banner
@@ -378,11 +362,9 @@ class ThermoGuardApp {
 
       if (descEl) {
         if (hwConnected) {
-          descEl.textContent = "Live telemetry streaming from ESP32 on GPIO 4. AI anomaly detection active.";
-        } else if (simRunning) {
-          descEl.textContent = `Simulation running (${data.simulation.scenario_name || "Active"}). Telemetry streaming to dashboard.`;
+          descEl.textContent = "Live physical sensor telemetry streaming from ESP32 on GPIO 4. AI anomaly detection active.";
         } else {
-          descEl.textContent = "Cabinet monitor operational. Awaiting hardware ESP32 sensor or test simulation.";
+          descEl.textContent = "ThermoGuard AI operational. Awaiting incoming physical sensor packets from ESP32 on /api/readings.";
         }
       }
     }
@@ -393,19 +375,25 @@ class ThermoGuardApp {
     if (quickDot && quickText) {
       quickDot.className = `dot ${hwConnected ? "connected" : ""}`;
       quickText.textContent = hwConnected
-        ? "ESP32 Hardware connected and streaming telemetry!"
-        : "ESP32 Hardware: Listening on port 5000";
+        ? "ESP32 Hardware connected & streaming telemetry!"
+        : "ESP32 Hardware: Listening for packets on /api/readings";
     }
 
-    // Simulation button state
-    this.isSimulating = simRunning;
-    const simBtn = document.getElementById("btn-quick-start-sim");
-    if (simBtn) {
-      simBtn.innerHTML = simRunning
-        ? `<i data-lucide="square"></i> Stop Simulation`
-        : `<i data-lucide="play"></i> Start Simulation`;
-      simBtn.className = simRunning ? "btn btn-outline" : "btn btn-primary";
-      this.refreshIcons();
+    // Hardware Node telemetry monitor card
+    const hwNodeBadge = document.getElementById("hw-node-badge");
+    const hwClientIp = document.getElementById("hw-client-ip");
+    const hwLastSeen = document.getElementById("hw-last-seen");
+
+    if (hwNodeBadge) {
+      hwNodeBadge.textContent = hwConnected ? "Online" : "Awaiting Sensor";
+      hwNodeBadge.className = hwConnected ? "badge badge-normal" : "badge badge-warning";
+    }
+    if (hwClientIp) {
+      hwClientIp.textContent = hwStatus.client_ip || "None (Offline)";
+    }
+    if (hwLastSeen) {
+      hwLastSeen.textContent =
+        hwStatus.last_seen_seconds != null ? `${hwStatus.last_seen_seconds}s ago` : "Never";
     }
 
     // 24-Hour Statistics Panel update
@@ -643,8 +631,6 @@ class ThermoGuardApp {
     let filtered = this.cachedReadings;
     if (filter === "HARDWARE") {
       filtered = this.cachedReadings.filter((r) => r.source === "HARDWARE");
-    } else if (filter === "SIMULATION") {
-      filtered = this.cachedReadings.filter((r) => r.source === "SIMULATION");
     } else if (filter === "ANOMALY") {
       filtered = this.cachedReadings.filter((r) => r.is_anomaly === 1);
     }
@@ -852,46 +838,8 @@ class ThermoGuardApp {
   }
 
   // -------------------------------------------------------------
-  // 6. SIMULATION CONTROLS & HELPERS
+  // 6. HARDWARE ENDPOINT & HELPERS
   // -------------------------------------------------------------
-  setQuickScenario(scenario) {
-    this.selectedScenario = scenario;
-    document.querySelectorAll(".sim-btn").forEach((btn) => {
-      btn.classList.toggle("active", btn.getAttribute("data-scenario") === scenario);
-    });
-    this.showToast(`Selected scenario: ${scenario}`, "info");
-  }
-
-  async toggleSimulation() {
-    if (this.isSimulating) {
-      try {
-        const res = await fetch(`${this.apiBase}/simulation/stop`, { method: "POST" });
-        if (res.ok) {
-          this.showToast("Simulation stopped", "warning");
-          this.fetchSystemStatus();
-        }
-      } catch {
-        this.showToast("Failed to stop simulation", "error");
-      }
-    } else {
-      try {
-        const res = await fetch(`${this.apiBase}/simulation/start`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ scenario: this.selectedScenario, interval: 2.0 }),
-        });
-        if (res.ok) {
-          this.showToast(`Simulation started (${this.selectedScenario})`, "success");
-          this.fetchSystemStatus();
-        } else {
-          this.showToast("Failed to start simulation", "error");
-        }
-      } catch {
-        this.showToast("Network error starting simulation", "error");
-      }
-    }
-  }
-
   copyEndpointUrl() {
     const host = window.location.hostname || "127.0.0.1";
     const port = window.location.port ? `:${window.location.port}` : ":5000";

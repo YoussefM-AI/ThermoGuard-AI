@@ -82,7 +82,7 @@ telemetry_buffer = TelemetryBuffer(max_size=15)
 
 class HardwareTracker:
     """
-    Tracks the active connection status of the ESP32 hardware and simulator.
+    Tracks the active connection status of the physical ESP32 hardware node.
     """
 
     def __init__(self):
@@ -167,9 +167,9 @@ def validate_telemetry_payload(data: Any) -> tuple[bool, str | None, dict[str, A
     if not (SENSOR_LIMITS["hum_min"] <= hum <= SENSOR_LIMITS["hum_max"]):
         return False, f"Humidity {hum}% out of realistic physical range (0 to 100%)", None
 
-    source = str(data.get("source", "SIMULATION")).strip().upper()
-    if source not in ("HARDWARE", "SIMULATION"):
-        source = "SIMULATION"
+    source = str(data.get("source", "HARDWARE")).strip().upper()
+    if source != "HARDWARE":
+        source = "HARDWARE"
 
     return True, None, {"temperature": round(temp, 2), "humidity": round(hum, 2), "source": source}
 
@@ -179,17 +179,17 @@ def process_telemetry_reading(
 ) -> dict[str, Any]:
     """
     Processes a valid sensor reading:
-    1. Updates connection tracker if hardware.
+    1. Updates ESP32 connection tracker.
     2. Runs AI / anomaly prediction.
     3. Saves record into SQLite.
     4. Evaluates and triggers alerts if abnormal.
     """
     temp = valid_data["temperature"]
     hum = valid_data["humidity"]
-    source = valid_data["source"]
+    source = valid_data.get("source", "HARDWARE")
 
-    if source == "HARDWARE":
-        hardware_tracker.record_hardware_ping(client_ip)
+    # Record hardware ping on every incoming reading
+    hardware_tracker.record_hardware_ping(client_ip)
 
     # ML Anomaly Evaluation
     from ai.predict import predict_anomaly

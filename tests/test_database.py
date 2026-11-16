@@ -101,9 +101,9 @@ class TestThermoGuardDatabase(unittest.TestCase):
 
     def test_analytics_calculation(self):
         # Insert 3 readings: 2 normal, 1 anomaly
-        insert_reading(20.0, 40.0, "SIMULATION", is_anomaly=0, db_path=self.temp_db_path)
+        insert_reading(20.0, 40.0, "HARDWARE", is_anomaly=0, db_path=self.temp_db_path)
         insert_reading(30.0, 50.0, "HARDWARE", is_anomaly=0, db_path=self.temp_db_path)
-        insert_reading(40.0, 60.0, "SIMULATION", is_anomaly=1, db_path=self.temp_db_path)
+        insert_reading(40.0, 60.0, "HARDWARE", is_anomaly=1, db_path=self.temp_db_path)
 
         summary = get_analytics_summary(db_path=self.temp_db_path)
         self.assertEqual(summary["readings_count"], 3)
@@ -111,8 +111,7 @@ class TestThermoGuardDatabase(unittest.TestCase):
         self.assertAlmostEqual(summary["temperature"]["min"], 20.0)
         self.assertAlmostEqual(summary["temperature"]["max"], 40.0)
         self.assertAlmostEqual(summary["temperature"]["avg"], 30.0)
-        self.assertEqual(summary["sources"]["hardware"], 1)
-        self.assertEqual(summary["sources"]["simulation"], 2)
+        self.assertEqual(summary["sources"]["hardware"], 3)
 
         # Verify 24-hour window summary
         summary_24h = get_24h_summary(db_path=self.temp_db_path)

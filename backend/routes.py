@@ -29,7 +29,6 @@ from backend.services import (
     process_telemetry_reading,
     validate_telemetry_payload,
 )
-from simulation.simulator import simulator_instance
 
 api_bp = Blueprint("api", __name__, url_prefix="/api")
 
@@ -78,30 +77,22 @@ def health_check():
 @api_bp.route("/status", methods=["GET"])
 def system_status():
     """
-    Consolidated system status: hardware connection, simulation engine,
+    Consolidated system status: hardware connection,
     AI model readiness, and top-level KPIs.
     """
     hw_status = hardware_tracker.get_status()
-    sim_status = simulator_instance.get_status()
     ai_status = get_model_info()
     latest = get_latest_reading()
     summary = get_analytics_summary()
     summary_24h = get_24h_summary()
 
-    # Determine primary monitoring mode
-    if hw_status["connected"]:
-        active_mode = "HARDWARE"
-    elif sim_status["running"]:
-        active_mode = "SIMULATION"
-    else:
-        active_mode = "IDLE"
+    active_mode = "ONLINE" if hw_status["connected"] else "WAITING_FOR_SENSOR"
 
     return jsonify(
         {
             "system_time": datetime.now(UTC).isoformat(),
             "monitoring_mode": active_mode,
             "hardware": hw_status,
-            "simulation": sim_status,
             "ai": ai_status,
             "latest_reading": latest,
             "summary": summary,
@@ -213,44 +204,7 @@ def acknowledge_all_alerts_endpoint():
 
 
 # -------------------------------------------------------------
-# 4. SIMULATION CONTROL
-# -------------------------------------------------------------
-
-
-@api_bp.route("/simulation/start", methods=["POST"])
-def start_simulation():
-    """Starts simulated telemetry injection."""
-    data = request.get_json(silent=True) or {}
-    scenario_key = data.get("scenario", "normal")
-    try:
-        interval = float(data.get("interval", 2.0))
-    except (ValueError, TypeError):
-        return jsonify({"error": "interval must be a number"}), 400
-
-    if not simulator_instance.set_scenario(scenario_key):
-        return jsonify({"error": f"Invalid scenario '{scenario_key}'"}), 400
-
-    simulator_instance.set_interval(interval)
-    started = simulator_instance.start()
-
-    return jsonify({"status": "success", "started": started, "simulation": simulator_instance.get_status()}), 200
-
-
-@api_bp.route("/simulation/stop", methods=["POST"])
-def stop_simulation():
-    """Stops simulated telemetry injection."""
-    stopped = simulator_instance.stop()
-    return jsonify({"status": "success", "stopped": stopped, "simulation": simulator_instance.get_status()}), 200
-
-
-@api_bp.route("/simulation/status", methods=["GET"])
-def get_simulation_status():
-    """Returns current simulator engine state."""
-    return jsonify({"status": "success", "simulation": simulator_instance.get_status()}), 200
-
-
-# -------------------------------------------------------------
-# 5. ANALYTICS & EVENTS
+# 4. ANALYTICS & EVENTS
 # -------------------------------------------------------------
 
 

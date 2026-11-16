@@ -36,13 +36,13 @@ class TestThermoGuardAPI(unittest.TestCase):
         self.assertEqual(data["database"], "connected")
 
     def test_post_reading_valid(self):
-        payload = {"temperature": 25.5, "humidity": 45.2, "source": "SIMULATION"}
+        payload = {"temperature": 25.5, "humidity": 45.2, "source": "HARDWARE"}
         resp = self.client.post("/api/readings", json=payload)
         self.assertEqual(resp.status_code, 201)
         data = resp.get_json()
         self.assertEqual(data["status"], "success")
         self.assertEqual(data["data"]["reading"]["temperature"], 25.5)
-        self.assertEqual(data["data"]["reading"]["source"], "SIMULATION")
+        self.assertEqual(data["data"]["reading"]["source"], "HARDWARE")
 
     def test_post_reading_invalid(self):
         # Missing fields
@@ -80,12 +80,11 @@ class TestThermoGuardAPI(unittest.TestCase):
         data = resp.get_json()
         self.assertIn("monitoring_mode", data)
         self.assertIn("hardware", data)
-        self.assertIn("simulation", data)
         self.assertIn("ai", data)
 
     def test_alerts_and_acknowledgement(self):
         # Trigger an alert by sending high critical temperature
-        resp = self.client.post("/api/readings", json={"temperature": 60.0, "humidity": 40.0, "source": "SIMULATION"})
+        resp = self.client.post("/api/readings", json={"temperature": 60.0, "humidity": 40.0, "source": "HARDWARE"})
         self.assertEqual(resp.status_code, 201)
 
         # Fetch alerts
@@ -104,26 +103,9 @@ class TestThermoGuardAPI(unittest.TestCase):
         self.assertEqual(resp_bulk.status_code, 200)
         self.assertIn("count", resp_bulk.get_json())
 
-    def test_simulation_controls(self):
-        # Start
-        start_resp = self.client.post("/api/simulation/start", json={"scenario": "normal", "interval": 1.0})
-        self.assertEqual(start_resp.status_code, 200)
-        start_data = start_resp.get_json()
-        self.assertTrue(start_data["started"])
-
-        # Status
-        status_resp = self.client.get("/api/simulation/status")
-        self.assertEqual(status_resp.status_code, 200)
-        self.assertTrue(status_resp.get_json()["simulation"]["running"])
-
-        # Stop
-        stop_resp = self.client.post("/api/simulation/stop")
-        self.assertEqual(stop_resp.status_code, 200)
-        self.assertTrue(stop_resp.get_json()["stopped"])
-
     def test_analytics_and_export(self):
         # Insert a reading
-        self.client.post("/api/readings", json={"temperature": 25.0, "humidity": 45.0, "source": "SIMULATION"})
+        self.client.post("/api/readings", json={"temperature": 25.0, "humidity": 45.0, "source": "HARDWARE"})
 
         # Analytics
         resp = self.client.get("/api/analytics")

@@ -1,1 +1,0 @@
-"""ThermoGuard AI - Simulation Package"""

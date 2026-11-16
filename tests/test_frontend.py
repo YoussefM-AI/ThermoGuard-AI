@@ -58,13 +58,12 @@ class TestThermoGuardFrontend(unittest.TestCase):
         self.assertIn(b"CabinetSenseApp", resp_js.data)
         resp_js.close()
 
-    def test_simulation_scenarios_rendered_in_html(self):
+    def test_hardware_node_rendered_in_html(self):
         resp = self.client.get("/")
         html = resp.data.decode("utf-8")
         resp.close()
-        scenarios = ["normal", "gradual_temp", "abnormal_hum", "combined"]
-        for sc in scenarios:
-            self.assertIn(f'data-scenario="{sc}"', html)
+        self.assertIn("ESP32", html)
+        self.assertIn("/api/readings", html)
 
 
 if __name__ == "__main__":
