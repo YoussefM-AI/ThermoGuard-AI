@@ -222,3 +222,6 @@ python -m unittest discover tests
 - [`tests/test_api.py`](tests/test_api.py): REST endpoint contracts, payload validation, status codes, simulation triggers, CSV export.
 - [`tests/test_ai.py`](tests/test_ai.py): Model serialization, feature engineering, normal prediction, anomaly sensitivity.
 - [`tests/test_frontend.py`](tests/test_frontend.py): Web server asset delivery, 4 streamlined SPA views, CSS/JS bundling.
+
+## 📜 License
+MIT License. Created by [Youssef Majbri](https://github.com/YoussefM-AI).
