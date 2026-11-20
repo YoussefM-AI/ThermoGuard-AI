@@ -34,16 +34,16 @@ def generate_cabinet_dataset(
 
     records = []
 
-    # Base operational baseline
-    base_temp = 24.5
-    base_hum = 45.0
+    # Base operational baseline (Industrial ambient & enclosure profile)
+    # Calibrated for realistic ambient conditions: 16°C - 32°C temp, 30% - 66% humidity
+    center_temp = 23.5
+    center_hum = 48.0
 
     # Anomaly injection schedule
     n_anomalies = int(n_samples * anomaly_ratio)
     anomaly_indices = set(np.random.choice(range(50, n_samples - 50), size=n_anomalies, replace=False))
 
-    # We will cluster some anomalies into continuous incident episodes
-    # Group random indices into small bursts of 10-25 samples
+    # Cluster anomalies into continuous incident episodes (bursts of 8-25 samples)
     burst_starts = sorted(anomaly_indices)[::15]
     incident_indices = set()
     incident_types = {}
@@ -57,20 +57,25 @@ def generate_cabinet_dataset(
 
     # Generation loop
     for i, ts in enumerate(timestamps):
+        # Multi-day ambient weather / seasonal drift (smooth long-period wave)
+        drift_phase = i * 2.0 * math.pi / max(1, n_samples * 0.3)
+        ambient_temp_drift = 4.5 * math.sin(drift_phase)
+        ambient_hum_drift = 12.0 * math.cos(drift_phase)
+
         # 24-hour diurnal ambient cycle
         hour = ts.hour + ts.minute / 60.0
-        diurnal_temp = 2.0 * math.sin((hour - 8.0) * math.pi / 12.0)
-        diurnal_hum = -1.5 * math.sin((hour - 8.0) * math.pi / 12.0)
+        diurnal_temp = 2.5 * math.sin((hour - 8.0) * math.pi / 12.0)
+        diurnal_hum = -2.5 * math.sin((hour - 8.0) * math.pi / 12.0)
 
         # Factory operating hours load (8:00 - 18:00 has slightly higher cabinet heat)
-        work_load = 1.2 if (8 <= ts.hour <= 18) else 0.0
+        work_load = 1.5 if (8 <= ts.hour <= 18) else 0.0
 
         # Micro-fluctuations
         temp_noise = np.random.normal(0, 0.25)
         hum_noise = np.random.normal(0, 0.45)
 
-        temp = base_temp + diurnal_temp + work_load + temp_noise
-        hum = base_hum + diurnal_hum - (work_load * 0.4) + hum_noise
+        temp = center_temp + ambient_temp_drift + diurnal_temp + work_load + temp_noise
+        hum = center_hum + ambient_hum_drift + diurnal_hum - (work_load * 0.3) + hum_noise
 
         is_anomaly = 0
         scenario_label = "normal"
@@ -81,20 +86,20 @@ def generate_cabinet_dataset(
             scenario_label = a_type
 
             if a_type == "thermal_spike":
-                # Heat rises sharply into 45°C - 65°C range
-                temp += np.random.uniform(15.0, 32.0)
-                hum -= np.random.uniform(5.0, 15.0)
+                # Critical heat surge into 42°C - 68°C range
+                temp = max(temp + np.random.uniform(16.0, 32.0), np.random.uniform(43.0, 65.0))
+                hum = max(15.0, hum - np.random.uniform(5.0, 15.0))
             elif a_type == "moisture_ingress":
-                # Humidity surges to 75% - 92%
-                hum += np.random.uniform(28.0, 48.0)
+                # Humidity surges to 76% - 95%
+                hum = max(hum + np.random.uniform(25.0, 45.0), np.random.uniform(76.0, 95.0))
                 temp += np.random.uniform(-1.0, 2.0)
             elif a_type == "combined_distress":
-                # Both heat and humidity surge
-                temp += np.random.uniform(18.0, 35.0)
-                hum += np.random.uniform(25.0, 45.0)
+                # Both heat and moisture surge into critical danger
+                temp = max(temp + np.random.uniform(18.0, 35.0), np.random.uniform(44.0, 68.0))
+                hum = max(hum + np.random.uniform(25.0, 45.0), np.random.uniform(78.0, 96.0))
 
         # Realistic sensor clipping
-        temp = max(10.0, min(85.0, temp))
+        temp = max(5.0, min(85.0, temp))
         hum = max(10.0, min(98.0, hum))
 
         records.append(
@@ -102,7 +107,7 @@ def generate_cabinet_dataset(
                 "timestamp": ts.isoformat(),
                 "temperature": round(float(temp), 2),
                 "humidity": round(float(hum), 2),
-                "source": "SIMULATION",
+                "source": "HARDWARE",
                 "is_anomaly": is_anomaly,
                 "scenario": scenario_label,
             }
