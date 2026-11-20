@@ -54,8 +54,8 @@ const char* CLOUD_SERVER_URL   = "https://your-thermoguard-ai.onrender.com/api/r
 #define DHTPIN  4                                     // Digital GPIO pin connected to DHT11 DATA
 #define DHTTYPE DHT11                                 // Physical sensor model: DHT11
 
-// Sampling Cadence: Read temperature and humidity every 3 seconds
-const unsigned long SAMPLING_INTERVAL_MS = 3000;
+// Sampling Cadence: Read temperature and humidity every 2 seconds
+const unsigned long SAMPLING_INTERVAL_MS = 2000;
 
 // -------------------------------------------------------------
 // GLOBAL INSTANCES & STATE
