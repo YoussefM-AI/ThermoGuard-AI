@@ -193,14 +193,12 @@ Open your browser and navigate to:
 | :--- | :--- | :--- |
 | `GET` | `/api/health` | Health check & SQLite database connectivity |
 | `GET` | `/api/status` | System state: hardware status, active mode, AI, KPIs |
-| `POST`| `/api/readings` | Ingests sensor reading (`{"temperature": X, "humidity": Y, "source": "..."}`) |
+| `POST`| `/api/readings` | Ingests sensor reading (`{"temperature": X, "humidity": Y, "source": "HARDWARE"}`) |
 | `GET` | `/api/readings` | Retrieves historical readings (supports `limit`, `offset`, `source`, `anomalies_only`) |
 | `GET` | `/api/readings/latest` | Retrieves the most recent single sensor observation |
 | `GET` | `/api/alerts` | Lists SCADA alarms (supports `severity` and `status` filters) |
 | `POST`| `/api/alerts/<id>/acknowledge` | Acknowledges an active unresolved alert |
-| `POST`| `/api/simulation/start` | Starts background telemetry simulation |
-| `POST`| `/api/simulation/stop` | Stops background telemetry simulation |
-| `GET` | `/api/simulation/status` | Retrieves current simulator engine status |
+| `POST`| `/api/alerts/acknowledge-all` | Bulk acknowledges all active unresolved alerts |
 | `GET` | `/api/analytics` | Statistical distributions (min/max/avg, anomaly frequency) |
 | `GET` | `/api/ai/status` | ML model architecture, features, and training metadata |
 | `POST`| `/api/ai/train` | Triggers on-demand Isolation Forest retraining |
@@ -208,7 +206,14 @@ Open your browser and navigate to:
 
 ---
 
-## 9. Automated Test Suite
+## 9. Anomaly & Alert Trigger Specification
+
+For the full breakdown of how humidity, temperature, and dynamic rate-of-change trigger early AI warnings and critical safety interlocks, see:
+- 📖 **[`docs/ANOMALY_TRIGGERS.md`](docs/ANOMALY_TRIGGERS.md)** — Complete step-by-step matrix, dynamic gradients ($\Delta T, \Delta H$), alert thresholds, and hardware testing instructions.
+
+---
+
+## 10. Automated Test Suite
 
 ThermoGuard AI includes an automated unit and integration test suite:
 
@@ -217,9 +222,8 @@ python -m unittest discover tests
 ```
 
 - [`tests/test_environment.py`](tests/test_environment.py): Library imports, Scikit-learn instantiation, SQLite engine.
-- [`tests/test_simulation.py`](tests/test_simulation.py): All 5 simulation scenarios, bounding, packet drop flags, thread lifecycle.
 - [`tests/test_database.py`](tests/test_database.py): Schema initialization, reading insertion, deduplication window, alert lifecycle.
-- [`tests/test_api.py`](tests/test_api.py): REST endpoint contracts, payload validation, status codes, simulation triggers, CSV export.
+- [`tests/test_api.py`](tests/test_api.py): REST endpoint contracts, payload validation, status codes, CSV export.
 - [`tests/test_ai.py`](tests/test_ai.py): Model serialization, feature engineering, normal prediction, anomaly sensitivity.
 - [`tests/test_frontend.py`](tests/test_frontend.py): Web server asset delivery, 4 streamlined SPA views, CSS/JS bundling.
 
